@@ -1,0 +1,16 @@
+.gradle
+/build
+.idea
+*.iml
+local.properties
+.DS_Store
+.kotlin
+kotlin-js-store
+*.log
+/sample/build
+/debukker/build
+.project
+.classpath
+.settings
+bin
+gen
