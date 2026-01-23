@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 
 data class DebugConfig(
     val isEnabled: Boolean = true,
+    val isResponseMockingEnabled: Boolean = true,
     val environmentConfig: EnvironmentConfig = EnvironmentConfig(),
     val requestMocks: List<RequestMock> = emptyList(),
     val responseMocks: List<ResponseMock> = emptyList(),
@@ -25,6 +26,10 @@ object DebugConfigManager {
 
     fun setEnabled(enabled: Boolean) {
         _config.update { it.copy(isEnabled = enabled) }
+    }
+    
+    fun setResponseMockingEnabled(enabled: Boolean) {
+        _config.update { it.copy(isResponseMockingEnabled = enabled) }
     }
 
     fun updateEnvironment(environment: Environment) {

@@ -5,23 +5,27 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.spongycode.debukker.debug.models.NetworkTransaction
-import com.spongycode.debukker.debug.network.NetworkLogger
-import com.spongycode.debukker.debug.network.generateCurlCommand
+import com.spongycode.debukker.debug.DebugConfigManager
 import com.spongycode.debukker.debug.models.NetworkRequest
 import com.spongycode.debukker.debug.models.NetworkResponse
+import com.spongycode.debukker.debug.models.NetworkTransaction
+import com.spongycode.debukker.debug.models.ResponseMock
+import com.spongycode.debukker.debug.network.NetworkLogger
+import com.spongycode.debukker.debug.network.generateCurlCommand
+import kotlin.time.Clock
 
 @Composable
 fun NetworkLogsScreen() {
@@ -105,17 +109,17 @@ fun NetworkTransactionItem(
     transaction: NetworkTransaction,
     onClick: () -> Unit
 ) {
+    val isPending = transaction.response == null && transaction.error == null
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (transaction.error != null) {
-                MaterialTheme.colorScheme.errorContainer
-            } else if (transaction.response?.statusCode in 200..299) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
+            containerColor = when {
+                transaction.error != null -> MaterialTheme.colorScheme.errorContainer
+                isPending -> MaterialTheme.colorScheme.tertiaryContainer
+                transaction.response?.statusCode in 200..299 -> MaterialTheme.colorScheme.primaryContainer
+                else -> MaterialTheme.colorScheme.surfaceVariant
             }
         )
     ) {
@@ -131,16 +135,34 @@ fun NetworkTransactionItem(
                     color = MaterialTheme.colorScheme.primary
                 )
 
-                transaction.response?.let {
-                    Text(
-                        "${it.statusCode} ${it.statusMessage}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (it.statusCode in 200..299) {
-                            Color(0xFF388E3C)
-                        } else {
-                            MaterialTheme.colorScheme.error
+                when {
+                    transaction.error != null -> {
+                        Text(
+                            "❌ Error",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    isPending -> {
+                        Text(
+                            "⏳ In Progress",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                    else -> {
+                        transaction.response?.let {
+                            Text(
+                                "${it.statusCode} ${it.statusMessage}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (it.statusCode in 200..299) {
+                                    Color(0xFF388E3C)
+                                } else {
+                                    MaterialTheme.colorScheme.error
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
 
@@ -151,6 +173,16 @@ fun NetworkTransactionItem(
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2
             )
+            
+            transaction.error?.let { error ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    maxLines = 2
+                )
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
 
@@ -195,6 +227,7 @@ fun TransactionDetailDialog(
     onDismiss: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
+    var showMockDialog by remember { mutableStateOf(false) }
     val clipboardManager = LocalClipboardManager.current
 
     AlertDialog(
@@ -227,6 +260,14 @@ fun TransactionDetailDialog(
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(
+                    onClick = { showMockDialog = true }
+                ) {
+                    Icon(Icons.Default.AddCircle, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Mock")
+                }
+                
+                TextButton(
                     onClick = {
                         val curlCommand = generateCurlCommand(transaction.request)
                         clipboardManager.setText(AnnotatedString(text = curlCommand))
@@ -234,12 +275,137 @@ fun TransactionDetailDialog(
                 ) {
                     Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Copy cURL")
+                    Text("cURL")
                 }
 
                 TextButton(onClick = onDismiss) {
                     Text("Close")
                 }
+            }
+        }
+    )
+    
+    if (showMockDialog) {
+        CreateMockDialog(
+            transaction = transaction,
+            onDismiss = { showMockDialog = false },
+            onConfirm = { mock ->
+                DebugConfigManager.addResponseMock(mock)
+                showMockDialog = false
+                onDismiss()
+            }
+        )
+    }
+}
+
+@Composable
+fun CreateMockDialog(
+    transaction: NetworkTransaction,
+    onDismiss: () -> Unit,
+    onConfirm: (ResponseMock) -> Unit
+) {
+    var statusCode by remember { mutableStateOf(transaction.response?.statusCode?.toString() ?: "200") }
+    var responseBody by remember { mutableStateOf(transaction.response?.body ?: "") }
+    var delayMs by remember { mutableStateOf("0") }
+    var mockHeaders by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Create Response Mock") },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    Text(
+                        "URL: ${transaction.request.url}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = statusCode,
+                        onValueChange = { statusCode = it },
+                        label = { Text("Status Code") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = responseBody,
+                        onValueChange = { responseBody = it },
+                        label = { Text("Response Body (JSON)") },
+                        modifier = Modifier.fillMaxWidth().height(200.dp),
+                        maxLines = 10
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = mockHeaders,
+                        onValueChange = { mockHeaders = it },
+                        label = { Text("Headers (key:value, one per line)") },
+                        placeholder = { Text("X-Mock: true\nContent-Type: application/json") },
+                        modifier = Modifier.fillMaxWidth().height(100.dp),
+                        maxLines = 5
+                    )
+                }
+
+                item {
+                    OutlinedTextField(
+                        value = delayMs,
+                        onValueChange = { delayMs = it },
+                        label = { Text("Delay (ms)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+
+                item {
+                    Text(
+                        "This will mock future requests to this URL with the configured response.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val headers = mockHeaders.lines()
+                        .filter { it.isNotBlank() }
+                        .mapNotNull { line ->
+                            val parts = line.split(":", limit = 2)
+                            if (parts.size == 2) {
+                                parts[0].trim() to parts[1].trim()
+                            } else null
+                        }.toMap()
+
+                    val mock = ResponseMock(
+                        id = "mock-${Clock.System.now().toEpochMilliseconds()}",
+                        urlPattern = transaction.request.url,
+                        method = transaction.request.method,
+                        statusCode = statusCode.toIntOrNull() ?: 200,
+                        bodyOverride = responseBody.ifBlank { null },
+                        headerOverrides = headers,
+                        delayMs = delayMs.toLongOrNull() ?: 0,
+                        isEnabled = true
+                    )
+                    onConfirm(mock)
+                }
+            ) {
+                Text("Create Mock")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         }
     )
@@ -299,16 +465,6 @@ fun RequestDetailsContent(request: NetworkRequest) {
                 }
             }
         }
-
-        item {
-            DetailSection("Req time") {
-                Text(
-                    request.requestTime.toString(),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = MaterialTheme.typography.bodySmall.fontSize
-                )
-            }
-        }
     }
 }
 
@@ -352,16 +508,6 @@ fun ResponseDetailsContent(response: NetworkResponse) {
                         fontSize = MaterialTheme.typography.bodySmall.fontSize
                     )
                 }
-            }
-        }
-
-        item {
-            DetailSection("Res time") {
-                Text(
-                    response.responseTime.toString(),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = MaterialTheme.typography.bodySmall.fontSize
-                )
             }
         }
     }

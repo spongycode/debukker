@@ -17,6 +17,18 @@ object NetworkLogger {
             (logs + transaction).takeLast(maxLogSize)
         }
     }
+    
+    fun updateTransaction(transactionId: String, updater: (NetworkTransaction) -> NetworkTransaction) {
+        _transactions.update { currentList ->
+            currentList.map { transaction ->
+                if (transaction.id == transactionId) {
+                    updater(transaction)
+                } else {
+                    transaction
+                }
+            }
+        }
+    }
 
     fun clearLogs() {
         _transactions.value = emptyList()
