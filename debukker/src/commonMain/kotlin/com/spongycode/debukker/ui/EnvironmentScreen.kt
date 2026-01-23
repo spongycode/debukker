@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.ui
+package com.spongycode.debukker.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -9,8 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.spongycode.debukker.debug.DebugConfigManager
-import com.spongycode.debukker.debug.models.Environment
+import com.spongycode.debukker.DebugConfigManager
+import com.spongycode.debukker.models.Environment
 
 @Composable
 fun EnvironmentScreen() {

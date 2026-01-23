@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.ui
+package com.spongycode.debukker.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

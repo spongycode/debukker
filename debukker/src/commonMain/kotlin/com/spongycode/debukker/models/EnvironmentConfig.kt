@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.models
+package com.spongycode.debukker.models
 
 import kotlinx.serialization.Serializable
 

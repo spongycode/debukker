@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.preferences
+package com.spongycode.debukker.preferences
 
 actual class PreferencesDataSource {
     private val preferences = mutableMapOf<String, String>()

@@ -1,6 +1,6 @@
-package com.spongycode.debukker.debug.network
+package com.spongycode.debukker.network
 
-import com.spongycode.debukker.debug.models.NetworkTransaction
+import com.spongycode.debukker.models.NetworkTransaction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

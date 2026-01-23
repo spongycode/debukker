@@ -1,6 +1,6 @@
-package com.spongycode.debukker.debug.network
+package com.spongycode.debukker.network
 
-import com.spongycode.debukker.debug.models.NetworkRequest
+import com.spongycode.debukker.models.NetworkRequest
 
 
 fun generateCurlCommand(request: NetworkRequest): String {

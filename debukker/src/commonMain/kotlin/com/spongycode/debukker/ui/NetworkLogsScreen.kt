@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.ui
+package com.spongycode.debukker.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,13 +18,13 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.spongycode.debukker.debug.DebugConfigManager
-import com.spongycode.debukker.debug.models.NetworkRequest
-import com.spongycode.debukker.debug.models.NetworkResponse
-import com.spongycode.debukker.debug.models.NetworkTransaction
-import com.spongycode.debukker.debug.models.ResponseMock
-import com.spongycode.debukker.debug.network.NetworkLogger
-import com.spongycode.debukker.debug.network.generateCurlCommand
+import com.spongycode.debukker.DebugConfigManager
+import com.spongycode.debukker.models.NetworkRequest
+import com.spongycode.debukker.models.NetworkResponse
+import com.spongycode.debukker.models.NetworkTransaction
+import com.spongycode.debukker.models.ResponseMock
+import com.spongycode.debukker.network.NetworkLogger
+import com.spongycode.debukker.network.generateCurlCommand
 import kotlin.time.Clock
 
 @Composable

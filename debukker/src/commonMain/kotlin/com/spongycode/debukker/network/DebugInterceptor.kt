@@ -1,10 +1,10 @@
-package com.spongycode.debukker.debug.network
+package com.spongycode.debukker.network
 
-import com.spongycode.debukker.debug.DebugConfigManager
-import com.spongycode.debukker.debug.models.NetworkRequest
-import com.spongycode.debukker.debug.models.NetworkResponse
-import com.spongycode.debukker.debug.models.NetworkTransaction
-import com.spongycode.debukker.debug.models.ResponseMock
+import com.spongycode.debukker.DebugConfigManager
+import com.spongycode.debukker.models.NetworkRequest
+import com.spongycode.debukker.models.NetworkResponse
+import com.spongycode.debukker.models.NetworkTransaction
+import com.spongycode.debukker.models.ResponseMock
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.statement.bodyAsText

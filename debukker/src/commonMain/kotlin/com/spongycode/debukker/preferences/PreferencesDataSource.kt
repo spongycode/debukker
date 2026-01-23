@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.preferences
+package com.spongycode.debukker.preferences
 
 expect class PreferencesDataSource() {
     fun getAllPreferences(): Map<String, String>

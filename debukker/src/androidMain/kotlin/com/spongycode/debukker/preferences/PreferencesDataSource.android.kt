@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.preferences
+package com.spongycode.debukker.preferences
 
 import android.content.Context
 import android.content.SharedPreferences

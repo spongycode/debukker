@@ -1,4 +1,4 @@
-package com.spongycode.debukker.debug.preferences
+package com.spongycode.debukker.preferences
 
 import kotlinx.browser.localStorage
 

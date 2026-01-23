@@ -1,9 +1,9 @@
-package com.spongycode.debukker.debug
+package com.spongycode.debukker
 
-import com.spongycode.debukker.debug.models.Environment
-import com.spongycode.debukker.debug.models.EnvironmentConfig
-import com.spongycode.debukker.debug.models.RequestMock
-import com.spongycode.debukker.debug.models.ResponseMock
+import com.spongycode.debukker.models.Environment
+import com.spongycode.debukker.models.EnvironmentConfig
+import com.spongycode.debukker.models.RequestMock
+import com.spongycode.debukker.models.ResponseMock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
