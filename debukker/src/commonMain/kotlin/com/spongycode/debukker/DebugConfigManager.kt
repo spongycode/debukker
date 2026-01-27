@@ -71,7 +71,12 @@ object DebugConfigManager {
     }
 
     fun addResponseMock(mock: ResponseMock) {
-        _config.update { it.copy(responseMocks = it.responseMocks + mock) }
+        _config.update { current ->
+            val filteredMocks = current.responseMocks.filterNot { 
+                it.urlPattern == mock.urlPattern && it.method == mock.method 
+            }
+            current.copy(responseMocks = filteredMocks + mock)
+        }
     }
 
     fun removeResponseMock(id: String) {

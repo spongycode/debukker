@@ -21,7 +21,6 @@ data class RequestMock(
         }
 
         val methodMatches = this.method == null || this.method.equals(method, ignoreCase = true)
-
         return urlMatches && methodMatches
     }
 }
@@ -41,7 +40,7 @@ data class ResponseMock(
         if (!isEnabled) return false
 
         val urlMatches = try {
-            Regex(urlPattern).containsMatchIn(url)
+            Regex(urlPattern).containsMatchIn(url) || urlPattern.contains(url)
         } catch (e: Exception) {
             url.contains(urlPattern, ignoreCase = true)
         }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,11 +14,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.spongycode.debukker.DebugConfigManager
+import com.spongycode.debukker.models.ResponseMock
 
 @Composable
 fun MockConfigScreen() {
     val config by DebugConfigManager.config.collectAsState()
     var throttleInput by remember { mutableStateOf(config.throttleMs.toString()) }
+    var editingMock by remember { mutableStateOf<ResponseMock?>(null) }
 
     Column(
         modifier = Modifier
@@ -228,6 +231,9 @@ fun MockConfigScreen() {
                             },
                             onDelete = {
                                 DebugConfigManager.removeResponseMock(mock.id)
+                            },
+                            onEdit = {
+                                editingMock = mock
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -236,13 +242,25 @@ fun MockConfigScreen() {
             }
         }
     }
+
+    editingMock?.let { mock ->
+        EditMockDialog(
+            mock = mock,
+            onDismiss = { editingMock = null },
+            onConfirm = { updatedMock ->
+                DebugConfigManager.updateResponseMock(updatedMock)
+                editingMock = null
+            }
+        )
+    }
 }
 
 @Composable
 fun MockItem(
-    mock: com.spongycode.debukker.models.ResponseMock,
+    mock: ResponseMock,
     onToggle: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -310,6 +328,14 @@ fun MockItem(
                         modifier = Modifier.size(40.dp)
                     )
 
+                    IconButton(onClick = onEdit) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
                     IconButton(onClick = onDelete) {
                         Icon(
                             Icons.Default.Delete,
@@ -321,4 +347,97 @@ fun MockItem(
             }
         }
     }
+}
+
+@Composable
+fun EditMockDialog(
+    mock: ResponseMock,
+    onDismiss: () -> Unit,
+    onConfirm: (ResponseMock) -> Unit
+) {
+    var statusCode by remember { mutableStateOf(mock.statusCode?.toString() ?: "200") }
+    var responseBody by remember { mutableStateOf(mock.bodyOverride ?: "") }
+    var delayMs by remember { mutableStateOf(mock.delayMs.toString()) }
+    var mockHeaders by remember { 
+        mutableStateOf(mock.headerOverrides.entries.joinToString("\n") { "${it.key}:${it.value}" }) 
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Response Mock") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    "URL: ${mock.urlPattern}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                OutlinedTextField(
+                    value = statusCode,
+                    onValueChange = { statusCode = it },
+                    label = { Text("Status Code") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = responseBody,
+                    onValueChange = { responseBody = it },
+                    label = { Text("Response Body (JSON)") },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    maxLines = 10
+                )
+
+                OutlinedTextField(
+                    value = mockHeaders,
+                    onValueChange = { mockHeaders = it },
+                    label = { Text("Headers (key:value, one per line)") },
+                    placeholder = { Text("X-Mock: true\nContent-Type: application/json") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    maxLines = 5
+                )
+
+                OutlinedTextField(
+                    value = delayMs,
+                    onValueChange = { delayMs = it },
+                    label = { Text("Delay (ms)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val headers = mockHeaders.lines()
+                        .filter { it.isNotBlank() }
+                        .mapNotNull { line ->
+                            val parts = line.split(":", limit = 2)
+                            if (parts.size == 2) {
+                                parts[0].trim() to parts[1].trim()
+                            } else null
+                        }.toMap()
+
+                    val updatedMock = mock.copy(
+                        statusCode = statusCode.toIntOrNull() ?: 200,
+                        bodyOverride = responseBody.ifBlank { null },
+                        headerOverrides = headers,
+                        delayMs = delayMs.toLongOrNull() ?: 0
+                    )
+                    onConfirm(updatedMock)
+                }
+            ) {
+                Text("Save Changes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
