@@ -1,18 +1,23 @@
 package com.spongycode.debukker.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.spongycode.debukker.DebugConfigManager
 import com.spongycode.debukker.models.ResponseMock
 
@@ -25,209 +30,147 @@ fun MockConfigScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            "Network Mocking",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = if (config.isOfflineMode) {
-                    MaterialTheme.colorScheme.errorContainer
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                }
+        ConfigSection("General Controls") {
+            ControlCard(
+                title = "Offline Mode",
+                subtitle = "Block all outgoing network requests",
+                icon = Icons.Default.SignalCellularConnectedNoInternet0Bar,
+                checked = config.isOfflineMode,
+                onCheckedChange = { DebugConfigManager.setOfflineMode(it) },
+                activeColor = MaterialTheme.colorScheme.error
             )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            ControlCard(
+                title = "Network Mocking",
+                subtitle = "Enable or disable all response mocks",
+                icon = Icons.Default.Dataset,
+                checked = config.isResponseMockingEnabled,
+                onCheckedChange = { DebugConfigManager.setResponseMockingEnabled(it) },
+                activeColor = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ConfigSection("Network Throttle") {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Offline Mode",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        "Block all network requests",
+                        "Add artificial delay (latency) to all requests",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
 
-                Switch(
-                    checked = config.isOfflineMode,
-                    onCheckedChange = { DebugConfigManager.setOfflineMode(it) }
-                )
-            }
-        }
+                    Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = throttleInput,
+                            onValueChange = { throttleInput = it },
+                            placeholder = { Text("0") },
+                            suffix = { Text("ms") },
+                            modifier = Modifier.weight(1f).height(52.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
 
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Network Throttle",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                        Button(
+                            onClick = {
+                                throttleInput.toLongOrNull()?.let { delay ->
+                                    DebugConfigManager.setThrottle(delay)
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.height(52.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp)
+                        ) {
+                            Text("Set Delay")
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
-                    "Add artificial delay to all requests",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = throttleInput,
-                        onValueChange = { throttleInput = it },
-                        label = { Text("Delay (ms)") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-
-                    Button(
-                        onClick = {
-                            throttleInput.toLongOrNull()?.let { delay ->
-                                DebugConfigManager.setThrottle(delay)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf(0L, 500L, 1000L, 3000L).forEach { delay ->
+                            val isSelected = config.throttleMs == delay
+                            Surface(
+                                onClick = {
+                                    throttleInput = delay.toString()
+                                    DebugConfigManager.setThrottle(delay)
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                            ) {
+                                Text(
+                                    "${delay}ms",
+                                    modifier = Modifier.padding(vertical = 6.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
-                    ) {
-                        Text("Apply")
                     }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    listOf(0L, 500L, 1000L, 3000L).forEach { delay ->
-                        OutlinedButton(
-                            onClick = {
-                                throttleInput = delay.toString()
-                                DebugConfigManager.setThrottle(delay)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("${delay}ms", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                }
-
-                if (config.throttleMs > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "⏱ Current delay: ${config.throttleMs}ms",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth()
+        ConfigSection(
+            title = "Active Mocks",
+            action = {
+                if (config.responseMocks.isNotEmpty()) {
+                    TextButton(onClick = { DebugConfigManager.clearAllMocks() }) {
+                        Text("Clear All", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
+            if (config.responseMocks.isEmpty()) {
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            "Response Mocks",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Mock API responses",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Switch(
-                        checked = config.isResponseMockingEnabled,
-                        onCheckedChange = { DebugConfigManager.setResponseMockingEnabled(it) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Divider()
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 ) {
                     Text(
-                        "${config.responseMocks.size} mock(s) configured",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    if (config.responseMocks.isNotEmpty()) {
-                        Button(
-                            onClick = { DebugConfigManager.clearAllMocks() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Clear All")
-                        }
-                    }
-                }
-
-                if (config.responseMocks.isEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        "No mocks configured. Create mocks from the Network tab by tapping any API call.",
+                        "No active mocks. Create mocks by tapping network logs.",
+                        modifier = Modifier.padding(24.dp),
                         style = MaterialTheme.typography.bodySmall,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                } else {
-                    Spacer(modifier = Modifier.height(12.dp))
-
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     config.responseMocks.forEach { mock ->
                         MockItem(
                             mock = mock,
                             onToggle = { enabled ->
-                                DebugConfigManager.updateResponseMock(
-                                    mock.copy(isEnabled = enabled)
-                                )
+                                DebugConfigManager.updateResponseMock(mock.copy(isEnabled = enabled))
                             },
                             onDelete = {
                                 DebugConfigManager.removeResponseMock(mock.id)
@@ -236,11 +179,12 @@ fun MockConfigScreen() {
                                 editingMock = mock
                             }
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
             }
         }
+        
+        Spacer(modifier = Modifier.height(32.dp))
     }
 
     editingMock?.let { mock ->
@@ -256,97 +200,166 @@ fun MockConfigScreen() {
 }
 
 @Composable
+fun ConfigSection(
+    title: String,
+    action: @Composable (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp
+            )
+            action?.invoke()
+        }
+        content()
+    }
+}
+
+@Composable
+fun ControlCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    activeColor: Color
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = if (checked) activeColor.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.padding(10.dp).size(20.dp),
+                    tint = if (checked) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = activeColor
+                )
+            )
+        }
+    }
+}
+
+@Composable
 fun MockItem(
     mock: ResponseMock,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onEdit: () -> Unit
 ) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (mock.isEnabled) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        "${mock.method ?: "ANY"} • ${mock.statusCode ?: 200}",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                if (mock.delayMs > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(6.dp)
                     ) {
                         Text(
-                            mock.method ?: "ANY",
+                            "${mock.delayMs}ms",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        mock.statusCode?.let { code ->
-                            Text(
-                                "→ $code",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        mock.urlPattern,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        maxLines = 2
-                    )
-
-                    if (mock.delayMs > 0) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "⏱ ${mock.delayMs}ms delay",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Switch(
-                        checked = mock.isEnabled,
-                        onCheckedChange = onToggle,
-                        modifier = Modifier.size(40.dp)
-                    )
-
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = "Edit",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    }
+                Spacer(modifier = Modifier.weight(1f))
+                
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                }
+                
+                Spacer(modifier = Modifier.width(4.dp))
+                
+                Switch(
+                    checked = mock.isEnabled,
+                    onCheckedChange = onToggle,
+                    scale = 0.7f
+                )
             }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
+            Text(
+                mock.urlPattern,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
+}
+
+@Composable
+fun Switch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, scale: Float) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        modifier = Modifier.scale(scale)
+    )
 }
 
 @Composable
@@ -364,41 +377,51 @@ fun EditMockDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Response Mock") },
+        title = { 
+            Text("Edit Response", style = MaterialTheme.typography.titleMedium) 
+        },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    "URL: ${mock.urlPattern}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        mock.urlPattern,
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
 
                 OutlinedTextField(
                     value = statusCode,
                     onValueChange = { statusCode = it },
                     label = { Text("Status Code") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
                     singleLine = true
                 )
 
                 OutlinedTextField(
                     value = responseBody,
                     onValueChange = { responseBody = it },
-                    label = { Text("Response Body (JSON)") },
-                    modifier = Modifier.fillMaxWidth().height(200.dp),
-                    maxLines = 10
+                    label = { Text("Response Body") },
+                    modifier = Modifier.fillMaxWidth().height(180.dp),
+                    shape = RoundedCornerShape(10.dp)
                 )
 
                 OutlinedTextField(
                     value = mockHeaders,
                     onValueChange = { mockHeaders = it },
-                    label = { Text("Headers (key:value, one per line)") },
-                    placeholder = { Text("X-Mock: true\nContent-Type: application/json") },
+                    label = { Text("Headers (Key:Value)") },
+                    placeholder = { Text("Content-Type: application/json") },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
-                    maxLines = 5
+                    shape = RoundedCornerShape(10.dp)
                 )
 
                 OutlinedTextField(
@@ -406,12 +429,13 @@ fun EditMockDialog(
                     onValueChange = { delayMs = it },
                     label = { Text("Delay (ms)") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
                     singleLine = true
                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     val headers = mockHeaders.lines()
                         .filter { it.isNotBlank() }
@@ -422,22 +446,24 @@ fun EditMockDialog(
                             } else null
                         }.toMap()
 
-                    val updatedMock = mock.copy(
+                    onConfirm(mock.copy(
                         statusCode = statusCode.toIntOrNull() ?: 200,
                         bodyOverride = responseBody.ifBlank { null },
                         headerOverrides = headers,
                         delayMs = delayMs.toLongOrNull() ?: 0
-                    )
-                    onConfirm(updatedMock)
-                }
+                    ))
+                },
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Save Changes")
+                Text("Save")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

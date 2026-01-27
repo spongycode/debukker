@@ -1,8 +1,12 @@
 package com.spongycode.debukker.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,95 +25,124 @@ fun EnvironmentScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            "Environment Configuration",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
         Spacer(modifier = Modifier.height(16.dp))
-        
-        Environment.entries.forEach { env ->
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+            shape = RoundedCornerShape(20.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+        ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.padding(20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                RadioButton(
-                    selected = currentEnv == env,
-                    onClick = { DebugConfigManager.updateEnvironment(env) }
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Dns,
+                        contentDescription = null,
+                        modifier = Modifier.padding(10.dp).size(24.dp),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
                 Column {
                     Text(
-                        env.displayName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (currentEnv == env) FontWeight.Bold else FontWeight.Normal
+                        "Current Base URL",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
-                        when (env) {
-                            Environment.PRODUCTION -> envConfig.productionUrl
-                            Environment.PRE_PRODUCTION -> envConfig.preProductionUrl
-                            Environment.LOCAL -> envConfig.localUrl
-                            Environment.CUSTOM -> envConfig.customBaseUrl.ifBlank { "Not set" }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        envConfig.getBaseUrl(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
         }
-        
-        if (currentEnv == Environment.CUSTOM) {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            var customUrl by remember { mutableStateOf(envConfig.customBaseUrl) }
-            
-            OutlinedTextField(
-                value = customUrl,
-                onValueChange = { customUrl = it },
-                label = { Text("Custom Base URL") },
-                placeholder = { Text("https://api.custom.com") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Button(
-                onClick = { DebugConfigManager.setCustomBaseUrl(customUrl) },
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text("Save Custom URL")
-            }
-        }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Current Base URL",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    envConfig.getBaseUrl(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+
+        ConfigSection("Select Environment") {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Environment.entries.forEach { env ->
+                    val isSelected = currentEnv == env
+                    Surface(
+                        onClick = { DebugConfigManager.updateEnvironment(env) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    env.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    when (env) {
+                                        Environment.PRODUCTION -> envConfig.productionUrl
+                                        Environment.PRE_PRODUCTION -> envConfig.preProductionUrl
+                                        Environment.LOCAL -> envConfig.localUrl
+                                        Environment.CUSTOM -> envConfig.customBaseUrl.ifBlank { "Tap to configure" }
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { DebugConfigManager.updateEnvironment(env) },
+                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        if (currentEnv == Environment.CUSTOM) {
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            ConfigSection("Configure Custom URL") {
+                var customUrl by remember { mutableStateOf(envConfig.customBaseUrl) }
+                
+                OutlinedTextField(
+                    value = customUrl,
+                    onValueChange = { customUrl = it },
+                    placeholder = { Text("https://api.custom.com") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    trailingIcon = {
+                        TextButton(
+                            onClick = { DebugConfigManager.setCustomBaseUrl(customUrl) },
+                            modifier = Modifier.padding(end = 4.dp)
+                        ) {
+                            Text("SAVE")
+                        }
+                    }
                 )
             }
         }
+        
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }

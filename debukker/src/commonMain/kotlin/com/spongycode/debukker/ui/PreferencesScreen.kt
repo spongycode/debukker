@@ -1,11 +1,13 @@
 package com.spongycode.debukker.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,38 +30,49 @@ fun PreferencesScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text(
-                    "Preferences",
-                    style = MaterialTheme.typography.titleLarge,
+                    "Shared Preferences",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "${preferences.size} keys",
-                    style = MaterialTheme.typography.bodySmall,
+                    "${preferences.size} items discovered",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { showAddDialog = true }) {
-                    Text("Add")
+                Surface(
+                    onClick = { showAddDialog = true },
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Add", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
                 }
                 
-                Button(
+                IconButton(
                     onClick = { DebugPreferencesManager.clearAll() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    modifier = Modifier.background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
                 ) {
-                    Text("Clear All")
+                    Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -68,21 +81,31 @@ fun PreferencesScreen() {
         
         if (preferences.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.fillMaxSize().padding(top = 100.dp),
+                contentAlignment = Alignment.TopCenter
             ) {
-                Text(
-                    "No preferences available",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.SettingsSuggest, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "No preferences found",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 items(
-                    items = preferences.entries.toList(),
+                    items = preferences.entries.toList().sortedBy { it.key },
                     key = { it.key }
                 ) { (key, value) ->
                     PreferenceItem(
@@ -99,7 +122,7 @@ fun PreferencesScreen() {
     showEditDialog?.let { (key, value) ->
         PreferenceEditDialog(
             key = key,
-            value = value,
+            initialValue = value,
             onDismiss = { showEditDialog = null },
             onSave = { newValue ->
                 DebugPreferencesManager.updatePreference(key, newValue)
@@ -126,38 +149,43 @@ fun PreferenceItem(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+        tonalElevation = 1.dp
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     key,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     value,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontFamily = FontFamily.Monospace
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
             
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, "Edit", tint = MaterialTheme.colorScheme.primary)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.DeleteOutline, "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
                 }
             }
         }
@@ -167,33 +195,45 @@ fun PreferenceItem(
 @Composable
 fun PreferenceEditDialog(
     key: String,
-    value: String,
+    initialValue: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
-    var newValue by remember { mutableStateOf(value) }
+    var newValue by remember { mutableStateOf(initialValue) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Preference") },
+        title = { Text("Edit Value", style = MaterialTheme.typography.titleMedium) },
         text = {
-            Column {
-                Text(
-                    "Key: $key",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        "Key: $key",
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
                 OutlinedTextField(
                     value = newValue,
                     onValueChange = { newValue = it },
                     label = { Text("Value") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(newValue) }) {
+            Button(
+                onClick = { onSave(newValue) },
+                shape = RoundedCornerShape(10.dp)
+            ) {
                 Text("Save")
             }
         },
@@ -201,7 +241,9 @@ fun PreferenceEditDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -215,28 +257,32 @@ fun PreferenceAddDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Preference") },
+        title = { Text("Add Preference", style = MaterialTheme.typography.titleMedium) },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(
                     value = key,
                     onValueChange = { key = it },
                     label = { Text("Key") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                
                 OutlinedTextField(
                     value = value,
                     onValueChange = { value = it },
                     label = { Text("Value") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp)
                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = { onAdd(key, value) },
-                enabled = key.isNotBlank()
+                enabled = key.isNotBlank(),
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Add")
             }
@@ -245,6 +291,8 @@ fun PreferenceAddDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

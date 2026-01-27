@@ -1,23 +1,64 @@
 package com.spongycode.debukker.ui
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Dataset
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SignalCellularNoSim
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.spongycode.debukker.DebugConfigManager
 import com.spongycode.debukker.models.NetworkRequest
 import com.spongycode.debukker.models.NetworkResponse
@@ -33,62 +74,96 @@ fun NetworkLogsScreen() {
     var filterText by remember { mutableStateOf("") }
     var selectedTransaction by remember { mutableStateOf<NetworkTransaction?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        OutlinedTextField(
+            value = filterText,
+            onValueChange = { filterText = it },
+            placeholder = { Text("Search logs...", style = MaterialTheme.typography.bodyMedium) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            trailingIcon = { 
+                if (filterText.isNotEmpty()) {
+                    IconButton(onClick = { filterText = "" }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+            ),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Network Logs (${transactions.size})",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                "Total: ${transactions.size}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = { NetworkLogger.clearLogs() }) {
-                    Icon(Icons.Default.Delete, "Clear logs")
-                }
+            TextButton(
+                onClick = { NetworkLogger.clearLogs() },
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                modifier = Modifier.height(28.dp)
+            ) {
+                Icon(Icons.Default.DeleteSweep, null, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Clear All", style = MaterialTheme.typography.labelSmall)
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
-            value = filterText,
-            onValueChange = { filterText = it },
-            placeholder = { Text("Filter by URL (supports regex)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         if (transactions.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.fillMaxSize().padding(top = 100.dp),
+                contentAlignment = Alignment.TopCenter
             ) {
-                Text(
-                    "No network requests captured yet",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.SignalCellularNoSim, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "No requests captured",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
+                val filtered = if (filterText.isBlank()) {
+                    transactions
+                } else {
+                    NetworkLogger.filterByUrl(filterText)
+                }
+                
                 items(
-                    items = (if (filterText.isBlank()) {
-                        transactions
-                    } else {
-                        NetworkLogger.filterByUrl(filterText)
-                    }).reversed(),
+                    items = filtered.reversed(),
                     key = { it.id }
                 ) { transaction ->
                     NetworkTransactionItem(
                         transaction = transaction,
+                        searchQuery = filterText,
                         onClick = { selectedTransaction = transaction }
                     )
                 }
@@ -107,115 +182,140 @@ fun NetworkLogsScreen() {
 @Composable
 fun NetworkTransactionItem(
     transaction: NetworkTransaction,
+    searchQuery: String = "",
     onClick: () -> Unit
 ) {
     val isPending = transaction.response == null && transaction.error == null
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = when {
-                transaction.error != null -> MaterialTheme.colorScheme.errorContainer
-                isPending -> MaterialTheme.colorScheme.tertiaryContainer
-                transaction.response?.statusCode in 200..299 -> MaterialTheme.colorScheme.primaryContainer
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
+    val statusCode = transaction.response?.statusCode ?: 0
+    val isSuccess = statusCode in 200..299
+    val isError = transaction.error != null || (statusCode >= 400 && statusCode != 0)
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+        tonalElevation = 1.dp
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    transaction.request.method,
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        transaction.request.method,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
 
-                when {
-                    transaction.error != null -> {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                val statusColor = when {
+                    isPending -> MaterialTheme.colorScheme.tertiary
+                    isSuccess -> MaterialTheme.colorScheme.secondary
+                    isError -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                
+                Surface(
+                    color = statusColor.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        when {
+                            isPending -> "WAITING"
+                            isError -> if (transaction.error != null) "ERROR" else "$statusCode"
+                            else -> "$statusCode"
+                        },
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = statusColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (transaction.isMocked) {
                         Text(
-                            "❌ Error",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.error
+                            "🎭 MOCKED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(end = 8.dp)
                         )
                     }
-                    isPending -> {
-                        Text(
-                            "⏳ In Progress",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                    else -> {
-                        transaction.response?.let {
-                            Text(
-                                "${it.statusCode} ${it.statusMessage}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (it.statusCode in 200..299) {
-                                    Color(0xFF388E3C)
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                }
-                            )
-                        }
-                    }
+                    
+                    Text(
+                        transaction.duration?.let { "${it}ms" } ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                transaction.request.url,
+                text = getHighlightedText(transaction.request.url, searchQuery),
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = 2
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                fontWeight = FontWeight.Medium
             )
-            
-            transaction.error?.let { error ->
-                Spacer(modifier = Modifier.height(4.dp))
+
+            if (isError && transaction.error != null) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    error,
-                    style = MaterialTheme.typography.bodySmall,
+                    transaction.error,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
-                    maxLines = 2
+                    maxLines = 1,
+                    fontFamily = FontFamily.Monospace
                 )
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(4.dp))
+@Composable
+fun getHighlightedText(text: String, query: String): AnnotatedString {
+    if (query.isEmpty() || !text.contains(query, ignoreCase = true)) {
+        return AnnotatedString(text)
+    }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                transaction.duration?.let {
-                    Text(
-                        "⏱ ${it}ms",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+    val highlightColor = Color(0xFFFFFF00)
+    val onHighlightColor = Color.Black
 
-                transaction.response?.let {
-                    Text(
-                        "${it.bodySize} bytes",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+    return buildAnnotatedString {
+        var start = 0
+        while (start < text.length) {
+            val index = text.indexOf(query, start, ignoreCase = true)
+            if (index == -1) {
+                append(text.substring(start))
+                break
             }
 
-            if (transaction.isMocked) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "🎭 MOCKED",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary,
+            append(text.substring(start, index))
+            withStyle(
+                SpanStyle(
+                    background = highlightColor,
+                    color = onHighlightColor,
                     fontWeight = FontWeight.Bold
                 )
+            ) {
+                append(text.substring(index, index + query.length))
             }
+            start = index + query.length
         }
     }
 }
@@ -232,57 +332,103 @@ fun TransactionDetailDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Transaction Details") },
+        title = { 
+            Column {
+                Text(
+                    "Transaction Details",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    transaction.request.method + " • " + (transaction.response?.statusCode ?: "PENDING"),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                TabRow(selectedTabIndex = selectedTab) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Request") }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Response") }
-                    )
+                ScrollableTabRow(
+                    selectedTabIndex = selectedTab,
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    edgePadding = 0.dp,
+                    divider = {},
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]).clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+                            height = 3.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                ) {
+                    listOf("Request", "Response").forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            selectedContentColor = MaterialTheme.colorScheme.primary,
+                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text = { Text(title, fontSize = 14.sp, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium) }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                when (selectedTab) {
-                    0 -> RequestDetailsContent(transaction.request)
-                    1 -> transaction.response?.let { ResponseDetailsContent(it) }
-                        ?: Text("No response available")
+                Box(modifier = Modifier.heightIn(max = 400.dp)) {
+                    when (selectedTab) {
+                        0 -> RequestDetailsContent(transaction.request)
+                        1 -> transaction.response?.let { ResponseDetailsContent(it) }
+                            ?: Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                Text("No response available", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                    }
                 }
             }
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(
-                    onClick = { showMockDialog = true }
+                Surface(
+                    onClick = { showMockDialog = true },
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(Icons.Default.AddCircle, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Mock")
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Dataset, null, modifier = Modifier.size(16.dp), tint = Color.White)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("MOCK", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
                 }
                 
-                TextButton(
+                Surface(
                     onClick = {
                         val curlCommand = generateCurlCommand(transaction.request)
                         clipboardManager.setText(AnnotatedString(text = curlCommand))
-                    }
+                    },
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("cURL")
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("CURL", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
 
                 TextButton(onClick = onDismiss) {
-                    Text("Close")
+                    Text("CLOSE")
                 }
             }
-        }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
     
     if (showMockDialog) {
@@ -311,18 +457,25 @@ fun CreateMockDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create Response Mock") },
+        title = { Text("Create Mock", style = MaterialTheme.typography.titleMedium) },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 item {
-                    Text(
-                        "URL: ${transaction.request.url}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            transaction.request.url,
+                            modifier = Modifier.padding(10.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 item {
@@ -331,6 +484,7 @@ fun CreateMockDialog(
                         onValueChange = { statusCode = it },
                         label = { Text("Status Code") },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
                         singleLine = true
                     )
                 }
@@ -339,9 +493,9 @@ fun CreateMockDialog(
                     OutlinedTextField(
                         value = responseBody,
                         onValueChange = { responseBody = it },
-                        label = { Text("Response Body (JSON)") },
-                        modifier = Modifier.fillMaxWidth().height(200.dp),
-                        maxLines = 10
+                        label = { Text("Response Body") },
+                        modifier = Modifier.fillMaxWidth().height(180.dp),
+                        shape = RoundedCornerShape(10.dp)
                     )
                 }
 
@@ -349,10 +503,10 @@ fun CreateMockDialog(
                     OutlinedTextField(
                         value = mockHeaders,
                         onValueChange = { mockHeaders = it },
-                        label = { Text("Headers (key:value, one per line)") },
-                        placeholder = { Text("X-Mock: true\nContent-Type: application/json") },
+                        label = { Text("Headers (Key:Value)") },
+                        placeholder = { Text("Content-Type: application/json") },
                         modifier = Modifier.fillMaxWidth().height(100.dp),
-                        maxLines = 5
+                        shape = RoundedCornerShape(10.dp)
                     )
                 }
 
@@ -362,21 +516,14 @@ fun CreateMockDialog(
                         onValueChange = { delayMs = it },
                         label = { Text("Delay (ms)") },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
                         singleLine = true
-                    )
-                }
-
-                item {
-                    Text(
-                        "This will mock future requests to this URL with the configured response.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     val headers = mockHeaders.lines()
                         .filter { it.isNotBlank() }
@@ -398,16 +545,19 @@ fun CreateMockDialog(
                         isEnabled = true
                     )
                     onConfirm(mock)
-                }
+                },
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Create Mock")
+                Text("Create")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -515,14 +665,22 @@ fun ResponseDetailsContent(response: NetworkResponse) {
 
 @Composable
 fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        content()
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            content()
+        }
     }
 }
