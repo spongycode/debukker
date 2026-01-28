@@ -17,7 +17,8 @@ data class DebugConfig(
     val responseMocks: List<ResponseMock> = emptyList(),
     val throttleMs: Long = 0,
     val isOfflineMode: Boolean = false,
-    val urlFilters: List<String> = emptyList()
+    val urlFilters: List<String> = emptyList(),
+    val globalHeaders: Map<String, String> = emptyMap()
 )
 
 object DebugConfigManager {
@@ -95,6 +96,10 @@ object DebugConfigManager {
         }
     }
 
+    fun updateGlobalHeaders(headers: Map<String, String>) {
+        _config.update { it.copy(globalHeaders = headers) }
+    }
+
     fun setThrottle(ms: Long) {
         _config.update { it.copy(throttleMs = ms) }
     }
@@ -107,7 +112,8 @@ object DebugConfigManager {
         _config.update {
             it.copy(
                 requestMocks = emptyList(),
-                responseMocks = emptyList()
+                responseMocks = emptyList(),
+                globalHeaders = emptyMap()
             )
         }
     }

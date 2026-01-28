@@ -19,13 +19,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spongycode.debukker.DebugConfigManager
+import com.spongycode.debukker.models.RequestMock
 import com.spongycode.debukker.models.ResponseMock
+import kotlin.time.Clock
 
 @Composable
 fun MockConfigScreen() {
     val config by DebugConfigManager.config.collectAsState()
     var throttleInput by remember { mutableStateOf(config.throttleMs.toString()) }
     var editingMock by remember { mutableStateOf<ResponseMock?>(null) }
+    var editingRequestMock by remember { mutableStateOf<com.spongycode.debukker.models.RequestMock?>(null) }
+    var showGlobalHeadersDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -140,6 +144,70 @@ fun MockConfigScreen() {
         Spacer(modifier = Modifier.height(24.dp))
 
         ConfigSection(
+            title = "Header Modifiers",
+            action = {
+                IconButton(onClick = { editingRequestMock =
+                    RequestMock(id = "req-${Clock.System.now().toEpochMilliseconds()}", urlPattern = ".*")
+                }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Modifier", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+                onClick = { showGlobalHeadersDialog = true }
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Public,
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(20.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Global Headers", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (config.globalHeaders.isEmpty()) "No global headers set" else "${config.globalHeaders.size} active global headers",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                }
+            }
+
+            if (config.requestMocks.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                config.requestMocks.forEach { reqMock ->
+                    RequestMockItem(
+                        mock = reqMock,
+                        onToggle = { enabled -> DebugConfigManager.updateRequestMock(reqMock.copy(isEnabled = enabled)) },
+                        onDelete = { DebugConfigManager.removeRequestMock(reqMock.id) },
+                        onEdit = { editingRequestMock = reqMock }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ConfigSection(
             title = "Active Mocks",
             action = {
                 if (config.responseMocks.isNotEmpty()) {
@@ -194,6 +262,32 @@ fun MockConfigScreen() {
             onConfirm = { updatedMock ->
                 DebugConfigManager.updateResponseMock(updatedMock)
                 editingMock = null
+            }
+        )
+    }
+
+    if (showGlobalHeadersDialog) {
+        GlobalHeadersDialog(
+            headers = config.globalHeaders,
+            onDismiss = { showGlobalHeadersDialog = false },
+            onConfirm = { updatedHeaders ->
+                DebugConfigManager.updateGlobalHeaders(updatedHeaders)
+                showGlobalHeadersDialog = false
+            }
+        )
+    }
+
+    editingRequestMock?.let { mock ->
+        EditRequestMockDialog(
+            mock = mock,
+            onDismiss = { editingRequestMock = null },
+            onConfirm = { updatedMock ->
+                if (config.requestMocks.any { it.id == updatedMock.id }) {
+                    DebugConfigManager.updateRequestMock(updatedMock)
+                } else {
+                    DebugConfigManager.addRequestMock(updatedMock)
+                }
+                editingRequestMock = null
             }
         )
     }
@@ -466,4 +560,204 @@ fun EditMockDialog(
         shape = RoundedCornerShape(24.dp),
         containerColor = MaterialTheme.colorScheme.surface
     )
+}
+@Composable
+fun GlobalHeadersDialog(
+    headers: Map<String, String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Map<String, String>) -> Unit
+) {
+    var headersText by remember { 
+        mutableStateOf(headers.entries.joinToString("\n") { "${it.key}:${it.value}" }) 
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Global Headers", style = MaterialTheme.typography.titleMedium) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "These headers will be added to every outgoing network request.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                
+                OutlinedTextField(
+                    value = headersText,
+                    onValueChange = { headersText = it },
+                    label = { Text("Headers (Key:Value)") },
+                    placeholder = { Text("Authorization: Bearer token\nX-App-Version: 1.0.0") },
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val updatedHeaders = headersText.lines()
+                        .filter { it.isNotBlank() }
+                        .mapNotNull { line ->
+                            val parts = line.split(":", limit = 2)
+                            if (parts.size == 2) {
+                                parts[0].trim() to parts[1].trim()
+                            } else null
+                        }.toMap()
+                    onConfirm(updatedHeaders)
+                },
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Update")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
+@Composable
+fun EditRequestMockDialog(
+    mock: RequestMock,
+    onDismiss: () -> Unit,
+    onConfirm: (RequestMock) -> Unit
+) {
+    var urlPattern by remember { mutableStateOf(mock.urlPattern) }
+    var mockHeaders by remember { 
+        mutableStateOf(mock.headerOverrides.entries.joinToString("\n") { "${it.key}:${it.value}" }) 
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Request Modifier", style = MaterialTheme.typography.titleMedium) },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = urlPattern,
+                    onValueChange = { urlPattern = it },
+                    label = { Text("URL Pattern (Regex supported)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = mockHeaders,
+                    onValueChange = { mockHeaders = it },
+                    label = { Text("Headers (Key:Value)") },
+                    placeholder = { Text("X-Mock-Request: true") },
+                    modifier = Modifier.fillMaxWidth().height(150.dp),
+                    shape = RoundedCornerShape(10.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val headers = mockHeaders.lines()
+                        .filter { it.isNotBlank() }
+                        .mapNotNull { line ->
+                            val parts = line.split(":", limit = 2)
+                            if (parts.size == 2) {
+                                parts[0].trim() to parts[1].trim()
+                            } else null
+                        }.toMap()
+
+                    onConfirm(mock.copy(
+                        urlPattern = urlPattern,
+                        headerOverrides = headers
+                    ))
+                },
+                shape = RoundedCornerShape(10.dp),
+                enabled = urlPattern.isNotBlank()
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+@Composable
+fun RequestMockItem(
+    mock: com.spongycode.debukker.models.RequestMock,
+    onToggle: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+    onEdit: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text(
+                        "REQUEST MODIFIER",
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+                
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                }
+                
+                Spacer(modifier = Modifier.width(4.dp))
+                
+                Switch(
+                    checked = mock.isEnabled,
+                    onCheckedChange = onToggle,
+                    scale = 0.7f
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
+            Text(
+                mock.urlPattern,
+                style = MaterialTheme.typography.bodySmall,
+                fontFamily = FontFamily.Monospace,
+                maxLines = 1,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            if (mock.headerOverrides.isNotEmpty()) {
+                Text(
+                    "${mock.headerOverrides.size} headers overridden",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+            }
+        }
+    }
 }

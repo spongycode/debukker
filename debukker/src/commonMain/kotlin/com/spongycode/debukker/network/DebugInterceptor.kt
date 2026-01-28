@@ -162,6 +162,10 @@ val DebugNetworkPlugin = createClientPlugin("DebugNetworkPlugin") {
 
             if (!config.isEnabled) return@onRequest
 
+            config.globalHeaders.forEach { (key, value) ->
+                request.headers.append(key, value)
+            }
+
             config.requestMocks
                 .filter { it.matches(url, method) }
                 .forEach { mock ->
