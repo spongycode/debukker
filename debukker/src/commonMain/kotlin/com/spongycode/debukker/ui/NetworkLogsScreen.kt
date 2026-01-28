@@ -247,7 +247,7 @@ fun NetworkTransactionItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (transaction.isMocked) {
                         Text(
-                            "🎭 MOCKED",
+                            "MOCKED",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.tertiary,
                             fontWeight = FontWeight.Bold,
@@ -565,20 +565,21 @@ fun CreateMockDialog(
 fun RequestDetailsContent(request: NetworkRequest) {
     LazyColumn(modifier = Modifier.fillMaxWidth()) {
         item {
-            DetailSection("URL") {
+            DetailSection("URL", copyValue = request.url) {
                 Text(request.url, fontFamily = FontFamily.Monospace)
             }
         }
 
         item {
-            DetailSection("Method") {
+            DetailSection("Method", copyValue = request.method) {
                 Text(request.method, fontWeight = FontWeight.Bold)
             }
         }
 
         if (request.headers.isNotEmpty()) {
             item {
-                DetailSection("Headers") {
+                val headersText = request.headers.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                DetailSection("Headers", copyValue = headersText) {
                     request.headers.forEach { (key, value) ->
                         Text(
                             "$key: $value",
@@ -592,7 +593,8 @@ fun RequestDetailsContent(request: NetworkRequest) {
 
         if (request.queryParams.isNotEmpty()) {
             item {
-                DetailSection("Query Parameters") {
+                val queryParamsText = request.queryParams.entries.joinToString("\n") { "${it.key} = ${it.value}" }
+                DetailSection("Query Parameters", copyValue = queryParamsText) {
                     request.queryParams.forEach { (key, value) ->
                         Text(
                             "$key = $value",
@@ -606,7 +608,7 @@ fun RequestDetailsContent(request: NetworkRequest) {
 
         request.body?.let { body ->
             item {
-                DetailSection("Body") {
+                DetailSection("Body", copyValue = body) {
                     Text(
                         body,
                         fontFamily = FontFamily.Monospace,
@@ -622,9 +624,10 @@ fun RequestDetailsContent(request: NetworkRequest) {
 fun ResponseDetailsContent(response: NetworkResponse) {
     LazyColumn(modifier = Modifier.fillMaxWidth()) {
         item {
-            DetailSection("Status") {
+            val statusText = "${response.statusCode} ${response.statusMessage}"
+            DetailSection("Status", copyValue = statusText) {
                 Text(
-                    "${response.statusCode} ${response.statusMessage}",
+                    statusText,
                     fontWeight = FontWeight.Bold,
                     color = if (response.statusCode in 200..299) {
                         Color(0xFF388E3C)
@@ -637,7 +640,8 @@ fun ResponseDetailsContent(response: NetworkResponse) {
 
         if (response.headers.isNotEmpty()) {
             item {
-                DetailSection("Headers") {
+                val headersText = response.headers.entries.joinToString("\n") { "${it.key}: ${it.value}" }
+                DetailSection("Headers", copyValue = headersText) {
                     response.headers.forEach { (key, value) ->
                         Text(
                             "$key: $value",
@@ -651,7 +655,7 @@ fun ResponseDetailsContent(response: NetworkResponse) {
 
         response.body?.let { body ->
             item {
-                DetailSection("Body") {
+                DetailSection("Body", copyValue = body) {
                     Text(
                         body,
                         fontFamily = FontFamily.Monospace,
@@ -664,7 +668,12 @@ fun ResponseDetailsContent(response: NetworkResponse) {
 }
 
 @Composable
-fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun DetailSection(
+    title: String,
+    copyValue: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
     Surface(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
@@ -672,13 +681,35 @@ fun DetailSection(title: String, content: @Composable ColumnScope.() -> Unit) {
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                title.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                letterSpacing = 1.sp
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    title.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.sp
+                )
+                
+                if (copyValue != null) {
+                    IconButton(
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(copyValue))
+                        },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "Copy $title",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             content()
         }
