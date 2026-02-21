@@ -12,21 +12,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.spongycode.debukker.DebugConfigManager
+import com.spongycode.debukker.DebugModule
 import com.spongycode.debukker.ui.theme.DebukkerTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DebugMenu(
     isVisible: Boolean,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     if (!isVisible) return
 
-    var selectedTab by remember { mutableStateOf(DebugTab.NETWORK_LOGS) }
+    val config by DebugConfigManager.config.collectAsState()
+    val modules = config.modules
+
+    var selectedModule by remember(modules) {
+        mutableStateOf(modules.firstOrNull() ?: DebugModule.NETWORK_LOGS)
+    }
+
+    LaunchedEffect(modules) {
+        if (selectedModule !in modules && modules.isNotEmpty()) {
+            selectedModule = modules.first()
+        }
+    }
 
     DebukkerTheme {
         ModalBottomSheet(
@@ -35,12 +47,12 @@ fun DebugMenu(
             dragHandle = {
                 BottomSheetDefaults.DragHandle(
                     color = MaterialTheme.colorScheme.outline.copy(
-                        alpha = 0.5f
-                    )
+                        alpha = 0.5f,
+                    ),
                 )
             },
             containerColor = MaterialTheme.colorScheme.background,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            shape = RoundedCornerShape(24.dp),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
@@ -48,90 +60,93 @@ fun DebugMenu(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         "Debukker",
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.ExtraBold
+                        fontWeight = FontWeight.ExtraBold,
                     )
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier.background(
                             MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(12.dp)
-                        )
+                            RoundedCornerShape(12.dp),
+                        ),
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                ScrollableTabRow(
-                    selectedTabIndex = selectedTab.ordinal,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    edgePadding = 12.dp,
-                    divider = {},
-                    indicator = { tabPositions ->
-                        TabRowDefaults.Indicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal])
-                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
-                            height = 3.dp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                ) {
-                    DebugTab.entries.forEach { tab ->
-                        Tab(
-                            selected = selectedTab == tab,
-                            onClick = { selectedTab = tab },
-                            selectedContentColor = MaterialTheme.colorScheme.primary,
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        tab.icon,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        tab.displayName,
-                                        fontSize = 14.sp,
-                                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                }
+                if (modules.isNotEmpty()) {
+                    val selectedIndex = modules.indexOf(selectedModule).coerceAtLeast(0)
+
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedIndex,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        edgePadding = 12.dp,
+                        divider = {},
+                        indicator = { tabPositions ->
+                            if (selectedIndex < tabPositions.size) {
+                                TabRowDefaults.Indicator(
+                                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedIndex])
+                                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+                                    height = 3.dp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
                             }
-                        )
+                        },
+                    ) {
+                        modules.forEach { module ->
+                            Tab(
+                                selected = selectedModule == module,
+                                onClick = { selectedModule = module },
+                                selectedContentColor = MaterialTheme.colorScheme.primary,
+                                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            module.icon,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            module.displayName,
+                                            fontSize = 14.sp,
+                                            fontWeight = if (selectedModule == module) FontWeight.Bold else FontWeight.Medium,
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
-                }
 
-                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
 
-                Box(modifier = Modifier.fillMaxSize().weight(1f)) {
-                    when (selectedTab) {
-                        DebugTab.NETWORK_LOGS -> NetworkLogsScreen()
-                        DebugTab.MOCK_CONFIG -> MockConfigScreen()
-                        DebugTab.ENVIRONMENT -> EnvironmentScreen()
-                        DebugTab.PREFERENCES -> PreferencesScreen()
+                    Box(modifier = Modifier.fillMaxSize().weight(1f)) {
+                        when (selectedModule) {
+                            DebugModule.NETWORK_LOGS -> NetworkLogsScreen()
+                            DebugModule.MOCK_CONFIG -> MockConfigScreen()
+                            DebugModule.ENVIRONMENT -> EnvironmentScreen()
+                            DebugModule.PREFERENCES -> PreferencesScreen()
+                        }
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No modules configured", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
     }
-}
-
-enum class DebugTab(val displayName: String, val icon: ImageVector) {
-    NETWORK_LOGS("Network", Icons.Default.SwapVert),
-    MOCK_CONFIG("Mocking", Icons.Default.Dataset),
-    ENVIRONMENT("Environment", Icons.Default.Dns),
-    PREFERENCES("Settings", Icons.Default.Settings)
 }

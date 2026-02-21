@@ -20,8 +20,7 @@ import com.spongycode.debukker.models.Environment
 fun EnvironmentScreen() {
     val config by DebugConfigManager.config.collectAsState()
     val envConfig = config.environmentConfig
-    val currentEnv = envConfig.getCurrentEnvironment()
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -51,9 +50,9 @@ fun EnvironmentScreen() {
                         tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
-                
+
                 Column {
                     Text(
                         "Current Base URL",
@@ -76,54 +75,39 @@ fun EnvironmentScreen() {
         ConfigSection("Select Environment") {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Environment.entries.forEach { env ->
-                    val isSelected = currentEnv == env
-                    Surface(
-                        onClick = { DebugConfigManager.updateEnvironment(env) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
-                        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    env.displayName,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    when (env) {
-                                        Environment.PRODUCTION -> envConfig.productionUrl
-                                        Environment.PRE_PRODUCTION -> envConfig.preProductionUrl
-                                        Environment.LOCAL -> envConfig.localUrl
-                                        Environment.CUSTOM -> envConfig.customBaseUrl.ifBlank { "Tap to configure" }
-                                    },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            RadioButton(
-                                selected = isSelected,
-                                onClick = { DebugConfigManager.updateEnvironment(env) },
-                                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
-                            )
+                    if (env != Environment.CUSTOM) {
+                        val isSelected = envConfig.currentEnvironment == env.name
+                        val url = when(env) {
+                            Environment.PRODUCTION -> envConfig.productionUrl
+                            Environment.PRE_PRODUCTION -> envConfig.preProductionUrl
+                            Environment.LOCAL -> envConfig.localUrl
+                            else -> envConfig.productionUrl
                         }
+                        EnvironmentItem(
+                            name = env.displayName,
+                            url = url,
+                            isSelected = isSelected,
+                            onClick = { DebugConfigManager.updateEnvironment(env) }
+                        )
                     }
                 }
+
+                val isCustomSelected = envConfig.currentEnvironment == Environment.CUSTOM.name
+                EnvironmentItem(
+                    name = Environment.CUSTOM.displayName,
+                    url = envConfig.customBaseUrl.ifBlank { "Tap to configure" },
+                    isSelected = isCustomSelected,
+                    onClick = { DebugConfigManager.updateEnvironment(Environment.CUSTOM) }
+                )
             }
         }
 
-        if (currentEnv == Environment.CUSTOM) {
+        if (envConfig.currentEnvironment == Environment.CUSTOM.name) {
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             ConfigSection("Configure Custom URL") {
                 var customUrl by remember { mutableStateOf(envConfig.customBaseUrl) }
-                
+
                 OutlinedTextField(
                     value = customUrl,
                     onValueChange = { customUrl = it },
@@ -142,7 +126,53 @@ fun EnvironmentScreen() {
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun EnvironmentItem(
+    name: String,
+    url: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = isSelected,
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    url,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }

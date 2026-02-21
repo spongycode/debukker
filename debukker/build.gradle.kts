@@ -1,14 +1,24 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
+group = "com.spongycode"
+version = "1.0.0"
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    kotlin("plugin.serialization") version "1.9.21"
+    alias(libs.plugins.kotlinxSerialization)
+    id("maven-publish")
 }
 
 kotlin {
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+        freeCompilerArgs.add("-opt-in=kotlin.time.ExperimentalTime")
+    }
+
     androidTarget {
     }
     
@@ -26,13 +36,11 @@ kotlin {
     
     js {
         browser()
-        binaries.executable()
     }
     
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         browser()
-        binaries.executable()
     }
     
     sourceSets {

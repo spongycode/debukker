@@ -42,15 +42,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
         }
         commonMain.dependencies {
-            // Debukker library dependency
-            implementation(project(":debukker"))
-            
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
-            implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
 
@@ -64,14 +60,23 @@ kotlin {
             implementation(libs.ktor.serialization.kotlinx.json)
         }
         jvmMain.dependencies {
+            implementation(project(":debukker"))
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
         jsMain.dependencies {
+            implementation(project(":debukker"))
             // No additional dependencies needed
         }
         wasmJsMain.dependencies {
+            implementation(project(":debukker"))
             // No additional dependencies needed
+        }
+        val iosArm64Main by getting {
+            dependencies { implementation(project(":debukker")) }
+        }
+        val iosSimulatorArm64Main by getting {
+            dependencies { implementation(project(":debukker")) }
         }
     }
 }
@@ -105,6 +110,7 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+    debugImplementation(project(":debukker"))
 }
 
 compose.desktop {

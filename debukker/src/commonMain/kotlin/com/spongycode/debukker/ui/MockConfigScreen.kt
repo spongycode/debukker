@@ -28,14 +28,15 @@ fun MockConfigScreen() {
     val config by DebugConfigManager.config.collectAsState()
     var throttleInput by remember { mutableStateOf(config.throttleMs.toString()) }
     var editingMock by remember { mutableStateOf<ResponseMock?>(null) }
-    var editingRequestMock by remember { mutableStateOf<com.spongycode.debukker.models.RequestMock?>(null) }
+    var editingRequestMock by remember { mutableStateOf<RequestMock?>(null) }
     var showGlobalHeadersDialog by remember { mutableStateOf(false) }
+    var showTimeoutDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState()),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -46,18 +47,18 @@ fun MockConfigScreen() {
                 icon = Icons.Default.SignalCellularConnectedNoInternet0Bar,
                 checked = config.isOfflineMode,
                 onCheckedChange = { DebugConfigManager.setOfflineMode(it) },
-                activeColor = MaterialTheme.colorScheme.error
+                activeColor = MaterialTheme.colorScheme.error,
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             ControlCard(
                 title = "Network Mocking",
                 subtitle = "Enable or disable all response mocks",
                 icon = Icons.Default.Dataset,
                 checked = config.isResponseMockingEnabled,
                 onCheckedChange = { DebugConfigManager.setResponseMockingEnabled(it) },
-                activeColor = MaterialTheme.colorScheme.primary
+                activeColor = MaterialTheme.colorScheme.primary,
             )
         }
 
@@ -68,13 +69,13 @@ fun MockConfigScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         "Add artificial delay (latency) to all requests",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -82,7 +83,7 @@ fun MockConfigScreen() {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         OutlinedTextField(
                             value = throttleInput,
@@ -92,7 +93,7 @@ fun MockConfigScreen() {
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape = RoundedCornerShape(10.dp),
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium
+                            textStyle = MaterialTheme.typography.bodyMedium,
                         )
 
                         Button(
@@ -103,7 +104,7 @@ fun MockConfigScreen() {
                             },
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.height(52.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp)
+                            contentPadding = PaddingValues(horizontal = 16.dp),
                         ) {
                             Text("Set Delay")
                         }
@@ -113,7 +114,7 @@ fun MockConfigScreen() {
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         listOf(0L, 500L, 1000L, 3000L).forEach { delay ->
                             val isSelected = config.throttleMs == delay
@@ -124,15 +125,20 @@ fun MockConfigScreen() {
                                 },
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(
+                                    alpha = 0.5f,
+                                ),
+                                border = if (isSelected) BorderStroke(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                ) else null,
                             ) {
                                 Text(
                                     "${delay}ms",
                                     modifier = Modifier.padding(vertical = 6.dp),
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
@@ -143,64 +149,57 @@ fun MockConfigScreen() {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        ConfigSection(
-            title = "Header Modifiers",
-            action = {
-                IconButton(onClick = { editingRequestMock =
-                    RequestMock(id = "req-${Clock.System.now().toEpochMilliseconds()}", urlPattern = ".*")
-                }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Modifier", tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-        ) {
+        ConfigSection("Network Timeouts") {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
-                onClick = { showGlobalHeadersDialog = true }
+                onClick = { showTimeoutDialog = true },
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Surface(
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(12.dp)
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
                         Icon(
-                            Icons.Default.Public,
+                            Icons.Default.Timer,
                             contentDescription = null,
                             modifier = Modifier.padding(10.dp).size(20.dp),
-                            tint = MaterialTheme.colorScheme.tertiary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Global Headers", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            if (config.globalHeaders.isEmpty()) "No global headers set" else "${config.globalHeaders.size} active global headers",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-                }
-            }
 
-            if (config.requestMocks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                config.requestMocks.forEach { reqMock ->
-                    RequestMockItem(
-                        mock = reqMock,
-                        onToggle = { enabled -> DebugConfigManager.updateRequestMock(reqMock.copy(isEnabled = enabled)) },
-                        onDelete = { DebugConfigManager.removeRequestMock(reqMock.id) },
-                        onEdit = { editingRequestMock = reqMock }
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Timeout Configuration",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        val summary = buildString {
+                            append("Req: ${if (config.requestTimeoutMs > 0) "${config.requestTimeoutMs}ms" else "30k"}")
+                            append(" • ")
+                            append("Conn: ${if (config.connectTimeoutMs > 0) "${config.connectTimeoutMs}ms" else "30k"}")
+                            append(" • ")
+                            append("Sock: ${if (config.socketTimeoutMs > 0) "${config.socketTimeoutMs}ms" else "30k"}")
+                        }
+                        Text(
+                            summary,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -208,32 +207,97 @@ fun MockConfigScreen() {
         Spacer(modifier = Modifier.height(24.dp))
 
         ConfigSection(
-            title = "Active Mocks",
-            action = {
-                if (config.responseMocks.isNotEmpty()) {
-                    TextButton(onClick = { DebugConfigManager.clearAllMocks() }) {
-                        Text("Clear All", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+            title = "Global Headers",
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
+                onClick = { showGlobalHeadersDialog = true },
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.Public,
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(20.dp),
+                            tint = MaterialTheme.colorScheme.tertiary,
+                        )
                     }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Global Headers",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            if (config.globalHeaders.isEmpty()) "No global headers set" else "${config.globalHeaders.size} active global headers",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
                 }
             }
+
+            }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        ConfigSection(
+            title = "Active Mocks",
+            action = {
+                if (config.responseMocks.isNotEmpty() || config.requestMocks.isNotEmpty()) {
+                    TextButton(onClick = { DebugConfigManager.clearAllMocks() }) {
+                        Text(
+                            "Clear All",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
         ) {
-            if (config.responseMocks.isEmpty()) {
+            if (config.responseMocks.isEmpty() && config.requestMocks.isEmpty()) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
                 ) {
                     Text(
                         "No active mocks. Create mocks by tapping network logs.",
                         modifier = Modifier.padding(24.dp),
                         style = MaterialTheme.typography.bodySmall,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    config.requestMocks.forEach { reqMock ->
+                        RequestMockItem(
+                            mock = reqMock,
+                            onToggle = { enabled -> DebugConfigManager.updateRequestMock(reqMock.copy(isEnabled = enabled)) },
+                            onDelete = { DebugConfigManager.removeRequestMock(reqMock.id) },
+                            onEdit = { editingRequestMock = reqMock },
+                        )
+                    }
                     config.responseMocks.forEach { mock ->
                         MockItem(
                             mock = mock,
@@ -245,13 +309,13 @@ fun MockConfigScreen() {
                             },
                             onEdit = {
                                 editingMock = mock
-                            }
+                            },
                         )
                     }
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
     }
 
@@ -262,7 +326,7 @@ fun MockConfigScreen() {
             onConfirm = { updatedMock ->
                 DebugConfigManager.updateResponseMock(updatedMock)
                 editingMock = null
-            }
+            },
         )
     }
 
@@ -273,7 +337,7 @@ fun MockConfigScreen() {
             onConfirm = { updatedHeaders ->
                 DebugConfigManager.updateGlobalHeaders(updatedHeaders)
                 showGlobalHeadersDialog = false
-            }
+            },
         )
     }
 
@@ -288,7 +352,24 @@ fun MockConfigScreen() {
                     DebugConfigManager.addRequestMock(updatedMock)
                 }
                 editingRequestMock = null
-            }
+            },
+        )
+    }
+
+    if (showTimeoutDialog) {
+        TimeoutDialog(
+            currentRequest = config.requestTimeoutMs,
+            currentConnect = config.connectTimeoutMs,
+            currentSocket = config.socketTimeoutMs,
+            onDismiss = { showTimeoutDialog = false },
+            onConfirm = { timeout ->
+                DebugConfigManager.setTimeoutOverrides(timeout, timeout, timeout)
+                showTimeoutDialog = false
+            },
+            onReset = {
+                DebugConfigManager.setTimeoutOverrides(0, 0, 0)
+                showTimeoutDialog = false
+            },
         )
     }
 }
@@ -297,20 +378,20 @@ fun MockConfigScreen() {
 fun ConfigSection(
     title: String,
     action: @Composable (() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
                 title.uppercase(),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                letterSpacing = 1.sp
+                letterSpacing = 1.sp,
             )
             action?.invoke()
         }
@@ -325,44 +406,48 @@ fun ControlCard(
     icon: ImageVector,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    activeColor: Color
+    activeColor: Color,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
                 color = if (checked) activeColor.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
                     modifier = Modifier.padding(10.dp).size(20.dp),
-                    tint = if (checked) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (checked) activeColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            
+
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = activeColor
-                )
+                    checkedTrackColor = activeColor,
+                ),
             )
         }
     }
@@ -373,86 +458,106 @@ fun MockItem(
     mock: ResponseMock,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(6.dp)
+                    shape = RoundedCornerShape(6.dp),
                 ) {
                     Text(
                         "${mock.method ?: "ANY"} • ${mock.statusCode ?: 200}",
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
-                
+
                 if (mock.delayMs > 0) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = RoundedCornerShape(6.dp),
                     ) {
                         Text(
                             "${mock.delayMs}ms",
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.tertiary
+                            color = MaterialTheme.colorScheme.tertiary,
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
-                
+
                 IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                
+
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = "Delete",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    )
                 }
-                
+
                 Spacer(modifier = Modifier.width(4.dp))
-                
+
                 Switch(
                     checked = mock.isEnabled,
                     onCheckedChange = onToggle,
-                    scale = 0.7f
+                    scale = 0.7f,
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(6.dp))
-            
+
             Text(
                 mock.urlPattern,
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
                 maxLines = 1,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (mock.headerOverrides.isNotEmpty()) {
+                    Text(
+                        "${mock.headerOverrides.size} headers",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 fun Switch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, scale: Float) {
-    Switch(
+    androidx.compose.material3.Switch(
         checked = checked,
         onCheckedChange = onCheckedChange,
-        modifier = Modifier.scale(scale)
+        modifier = Modifier.scale(scale),
     )
 }
 
@@ -460,35 +565,35 @@ fun Switch(checked: Boolean, onCheckedChange: (Boolean) -> Unit, scale: Float) {
 fun EditMockDialog(
     mock: ResponseMock,
     onDismiss: () -> Unit,
-    onConfirm: (ResponseMock) -> Unit
+    onConfirm: (ResponseMock) -> Unit,
 ) {
     var statusCode by remember { mutableStateOf(mock.statusCode?.toString() ?: "200") }
     var responseBody by remember { mutableStateOf(mock.bodyOverride ?: "") }
     var delayMs by remember { mutableStateOf(mock.delayMs.toString()) }
-    var mockHeaders by remember { 
-        mutableStateOf(mock.headerOverrides.entries.joinToString("\n") { "${it.key}:${it.value}" }) 
+    var mockHeaders by remember {
+        mutableStateOf(mock.headerOverrides.entries.joinToString("\n") { "${it.key}:${it.value}" })
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text("Edit Response", style = MaterialTheme.typography.titleMedium) 
+        title = {
+            Text("Edit Response", style = MaterialTheme.typography.titleMedium)
         },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
                         mock.urlPattern,
                         modifier = Modifier.padding(10.dp),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
@@ -498,7 +603,7 @@ fun EditMockDialog(
                     label = { Text("Status Code") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    singleLine = true
+                    singleLine = true,
                 )
 
                 OutlinedTextField(
@@ -506,7 +611,7 @@ fun EditMockDialog(
                     onValueChange = { responseBody = it },
                     label = { Text("Response Body") },
                     modifier = Modifier.fillMaxWidth().height(180.dp),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
                 )
 
                 OutlinedTextField(
@@ -515,7 +620,7 @@ fun EditMockDialog(
                     label = { Text("Headers (Key:Value)") },
                     placeholder = { Text("Content-Type: application/json") },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
                 )
 
                 OutlinedTextField(
@@ -524,7 +629,7 @@ fun EditMockDialog(
                     label = { Text("Delay (ms)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    singleLine = true
+                    singleLine = true,
                 )
             }
         },
@@ -540,14 +645,16 @@ fun EditMockDialog(
                             } else null
                         }.toMap()
 
-                    onConfirm(mock.copy(
-                        statusCode = statusCode.toIntOrNull() ?: 200,
-                        bodyOverride = responseBody.ifBlank { null },
-                        headerOverrides = headers,
-                        delayMs = delayMs.toLongOrNull() ?: 0
-                    ))
+                    onConfirm(
+                        mock.copy(
+                            statusCode = statusCode.toIntOrNull() ?: 200,
+                            bodyOverride = responseBody.ifBlank { null },
+                            headerOverrides = headers,
+                            delayMs = delayMs.toLongOrNull() ?: 0,
+                        ),
+                    )
                 },
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(10.dp),
             ) {
                 Text("Save")
             }
@@ -558,17 +665,18 @@ fun EditMockDialog(
             }
         },
         shape = RoundedCornerShape(24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     )
 }
+
 @Composable
 fun GlobalHeadersDialog(
     headers: Map<String, String>,
     onDismiss: () -> Unit,
-    onConfirm: (Map<String, String>) -> Unit
+    onConfirm: (Map<String, String>) -> Unit,
 ) {
-    var headersText by remember { 
-        mutableStateOf(headers.entries.joinToString("\n") { "${it.key}:${it.value}" }) 
+    var headersText by remember {
+        mutableStateOf(headers.entries.joinToString("\n") { "${it.key}:${it.value}" })
     }
 
     AlertDialog(
@@ -580,16 +688,16 @@ fun GlobalHeadersDialog(
                     "These headers will be added to every outgoing network request.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 16.dp),
                 )
-                
+
                 OutlinedTextField(
                     value = headersText,
                     onValueChange = { headersText = it },
                     label = { Text("Headers (Key:Value)") },
                     placeholder = { Text("Authorization: Bearer token\nX-App-Version: 1.0.0") },
                     modifier = Modifier.fillMaxWidth().height(200.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
                 )
             }
         },
@@ -606,7 +714,7 @@ fun GlobalHeadersDialog(
                         }.toMap()
                     onConfirm(updatedHeaders)
                 },
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(10.dp),
             ) {
                 Text("Update")
             }
@@ -617,7 +725,7 @@ fun GlobalHeadersDialog(
             }
         },
         shape = RoundedCornerShape(24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     )
 }
 
@@ -625,11 +733,11 @@ fun GlobalHeadersDialog(
 fun EditRequestMockDialog(
     mock: RequestMock,
     onDismiss: () -> Unit,
-    onConfirm: (RequestMock) -> Unit
+    onConfirm: (RequestMock) -> Unit,
 ) {
     var urlPattern by remember { mutableStateOf(mock.urlPattern) }
-    var mockHeaders by remember { 
-        mutableStateOf(mock.headerOverrides.entries.joinToString("\n") { "${it.key}:${it.value}" }) 
+    var mockHeaders by remember {
+        mutableStateOf(mock.headerOverrides.entries.joinToString("\n") { "${it.key}:${it.value}" })
     }
 
     AlertDialog(
@@ -638,7 +746,7 @@ fun EditRequestMockDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 OutlinedTextField(
                     value = urlPattern,
@@ -646,7 +754,7 @@ fun EditRequestMockDialog(
                     label = { Text("URL Pattern (Regex supported)") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    singleLine = true
+                    singleLine = true,
                 )
 
                 OutlinedTextField(
@@ -655,7 +763,7 @@ fun EditRequestMockDialog(
                     label = { Text("Headers (Key:Value)") },
                     placeholder = { Text("X-Mock-Request: true") },
                     modifier = Modifier.fillMaxWidth().height(150.dp),
-                    shape = RoundedCornerShape(10.dp)
+                    shape = RoundedCornerShape(10.dp),
                 )
             }
         },
@@ -671,13 +779,15 @@ fun EditRequestMockDialog(
                             } else null
                         }.toMap()
 
-                    onConfirm(mock.copy(
-                        urlPattern = urlPattern,
-                        headerOverrides = headers
-                    ))
+                    onConfirm(
+                        mock.copy(
+                            urlPattern = urlPattern,
+                            headerOverrides = headers,
+                        ),
+                    )
                 },
                 shape = RoundedCornerShape(10.dp),
-                enabled = urlPattern.isNotBlank()
+                enabled = urlPattern.isNotBlank(),
             ) {
                 Text("Save")
             }
@@ -688,76 +798,176 @@ fun EditRequestMockDialog(
             }
         },
         shape = RoundedCornerShape(24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
     )
 }
+
 @Composable
 fun RequestMockItem(
-    mock: com.spongycode.debukker.models.RequestMock,
+    mock: RequestMock,
     onToggle: (Boolean) -> Unit,
     onDelete: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(6.dp)
+                    shape = RoundedCornerShape(6.dp),
                 ) {
                     Text(
                         "REQUEST MODIFIER",
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.secondary,
                     )
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
-                
+
                 IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                
+
                 IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = "Delete",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    )
                 }
-                
+
                 Spacer(modifier = Modifier.width(4.dp))
-                
+
                 Switch(
                     checked = mock.isEnabled,
                     onCheckedChange = onToggle,
-                    scale = 0.7f
+                    scale = 0.7f,
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(6.dp))
-            
+
             Text(
                 mock.urlPattern,
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
                 maxLines = 1,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            
-            if (mock.headerOverrides.isNotEmpty()) {
-                Text(
-                    "${mock.headerOverrides.size} headers overridden",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (mock.headerOverrides.isNotEmpty()) {
+                    Text(
+                        "${mock.headerOverrides.size} headers",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    )
+                }
             }
         }
+    }
+}
+
+@Composable
+fun TimeoutDialog(
+    currentRequest: Long,
+    currentConnect: Long,
+    currentSocket: Long,
+    onDismiss: () -> Unit,
+    onConfirm: (Long) -> Unit,
+    onReset: () -> Unit,
+) {
+    var timeoutInput by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Network Timeouts", style = MaterialTheme.typography.titleMedium) },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                TimeoutDisplayRow("Request Timeout", currentRequest)
+                TimeoutDisplayRow("Connection Timeout", currentConnect)
+                TimeoutDisplayRow("Socket Timeout", currentSocket)
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                )
+
+                OutlinedTextField(
+                    value = timeoutInput,
+                    onValueChange = { timeoutInput = it },
+                    label = { Text("Set All Timeouts (ms)") },
+                    placeholder = { Text("e.g. 5000") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                    ),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val timeout = timeoutInput.toLongOrNull() ?: 0L
+                    onConfirm(timeout)
+                },
+                shape = RoundedCornerShape(10.dp),
+                enabled = timeoutInput.isNotBlank(),
+            ) {
+                Text("Apply")
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = onReset) {
+                    Text("Reset", color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        },
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+    )
+}
+
+@Composable
+private fun TimeoutDisplayRow(label: String, value: Long) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            if (value > 0) "${value}ms" else "30000ms (Default)",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (value > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+        )
     }
 }

@@ -26,21 +26,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.spongycode.debukker.network.createDebugHttpClient
-import com.spongycode.debukker.ui.DebugMenu
+import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import kotlinx.coroutines.launch
 
 @Composable
-@Preview
 fun App() {
-    var showDebugMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val httpClient = remember { createDebugHttpClient() }
+    val httpClient = remember { DebugFacade.httpClientFactory() }
     MaterialTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -130,19 +126,7 @@ fun App() {
                 }
             }
 
-            FloatingActionButton(
-                onClick = { showDebugMenu = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp)
-            ) {
-                Icon(Icons.Default.BugReport, "Debug Menu")
-            }
-
-            DebugMenu(
-                isVisible = showDebugMenu,
-                onDismiss = { showDebugMenu = false }
-            )
+            DebugFacade.DebukkerUI()
         }
     }
 }

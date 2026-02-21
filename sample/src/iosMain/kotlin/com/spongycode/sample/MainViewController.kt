@@ -2,4 +2,11 @@ package com.spongycode.sample
 
 import androidx.compose.ui.window.ComposeUIViewController
 
-fun MainViewController() = ComposeUIViewController { App() }
+import com.spongycode.debukker.network.createDebugHttpClient
+import com.spongycode.debukker.ui.DraggableDebugButton
+
+fun MainViewController() = ComposeUIViewController {
+    DebugFacade.DebukkerUI = { DraggableDebugButton() }
+    DebugFacade.httpClientFactory = { createDebugHttpClient() }
+    App() 
+}
