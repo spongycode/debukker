@@ -24,5 +24,7 @@ data class Recipe(
     val image: String = "",
     val rating: Double,
     val reviewCount: Int,
+    val ingredients: List<String> = emptyList(),
+    val instructions: List<String> = emptyList(),
     val mealType: List<String> = emptyList()
 )

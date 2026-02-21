@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,9 +54,16 @@ import coil3.compose.AsyncImage
 import com.spongycode.sample.models.Recipe
 import com.spongycode.sample.models.RecipeResponse
 import com.spongycode.sample.ui.theme.RecipeTheme
+import androidx.compose.material.icons.filled.ArrowBack
+import com.spongycode.sample.ui.screens.RecipeDetailsScreen
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import kotlinx.coroutines.launch
+
+sealed class Screen {
+    object Home : Screen()
+    data class Details(val recipeId: Int) : Screen()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,18 +71,42 @@ fun App() {
     val scope = rememberCoroutineScope()
     val httpClient = remember { DebugFacade.httpClientFactory() }
 
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+    
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var recipes by remember { mutableStateOf<List<Recipe>>(emptyList()) }
+    var skip by remember { mutableStateOf(0) }
+    var hasMore by remember { mutableStateOf(true) }
+    var refreshDetailsTrigger by remember { mutableStateOf(0) }
 
-    fun fetchRecipes() {
+    fun fetchRecipes(reset: Boolean = false) {
+        if (isLoading || (!hasMore && !reset)) return
+        
         scope.launch {
+            if (reset) {
+                skip = 0
+                hasMore = true
+                recipes = emptyList()
+            }
+            val limit = if (skip == 0) 20 else 10
+            
             isLoading = true
             errorMessage = null
             try {
                 val response: RecipeResponse =
-                    httpClient.get("https://dummyjson.com/recipes?limit=20").body()
-                recipes = response.recipes
+                    httpClient.get("https://dummyjson.com/recipes?limit=$limit&skip=$skip").body()
+                
+                if (reset) {
+                    recipes = response.recipes
+                } else {
+                    recipes = recipes + response.recipes
+                }
+                
+                skip += limit
+                if (response.recipes.isEmpty() || response.recipes.size < limit) {
+                    hasMore = false
+                }
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Unknown error occurred"
             } finally {
@@ -84,7 +116,7 @@ fun App() {
     }
 
     LaunchedEffect(Unit) {
-        fetchRecipes()
+        fetchRecipes(reset = true)
     }
 
     RecipeTheme {
@@ -93,14 +125,30 @@ fun App() {
                 topBar = {
                     TopAppBar(
                         title = {
-                            Text("Recipe Explorer", fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (currentScreen is Screen.Details) "Recipe Details" else "Recipe Explorer", 
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            if (currentScreen is Screen.Details) {
+                                IconButton(onClick = { currentScreen = Screen.Home }) {
+                                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                                }
+                            }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                             titleContentColor = MaterialTheme.colorScheme.primary
                         ),
                         actions = {
-                            IconButton(onClick = { fetchRecipes() }) {
+                            IconButton(onClick = { 
+                                if (currentScreen is Screen.Details) {
+                                    refreshDetailsTrigger++
+                                } else {
+                                    fetchRecipes(reset = true) 
+                                }
+                            }) {
                                 Icon(
                                     Icons.Default.Refresh,
                                     contentDescription = "Refresh",
@@ -111,18 +159,29 @@ fun App() {
                     )
                 }
             ) { paddingValues ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(paddingValues)
-                ) {
-                    if (isLoading) {
+                if (currentScreen is Screen.Details) {
+                    RecipeDetailsScreen(
+                        recipeId = (currentScreen as Screen.Details).recipeId,
+                        httpClient = httpClient,
+                        refreshTrigger = refreshDetailsTrigger,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(paddingValues)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(paddingValues)
+                    ) {
+                    if (isLoading && recipes.isEmpty()) {
                         CircularProgressIndicator(
                             modifier = Modifier.align(Alignment.Center),
                             color = MaterialTheme.colorScheme.primary
                         )
-                    } else if (errorMessage != null) {
+                    } else if (errorMessage != null && recipes.isEmpty()) {
                         Column(
                             modifier = Modifier.align(Alignment.Center).padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
@@ -155,27 +214,50 @@ fun App() {
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            items(recipes) { recipe ->
-                                RecipeCard(recipe)
+                            items(recipes.size) { index ->
+                                val recipe = recipes[index]
+                                RecipeCard(
+                                    recipe = recipe,
+                                    onClick = { currentScreen = Screen.Details(recipe.id) }
+                                )
+                                
+                                // Pagination trigger
+                                if (index == recipes.size - 1 && hasMore && !isLoading) {
+                                    LaunchedEffect(index) {
+                                        fetchRecipes()
+                                    }
+                                }
+                            }
+                            
+                            if (isLoading && recipes.isNotEmpty()) {
+                                item(span = { GridItemSpan(maxLineSpan) }) { 
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) 
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                // The Debukker UI Facade (renders nothing in release mode)
-                DebugFacade.DebukkerUI()
             }
         }
+                
+        // The Debukker UI Facade (renders nothing in release mode)
+        DebugFacade.DebukkerUI()
     }
+}
 }
 
 @Composable
-fun RecipeCard(recipe: Recipe) {
+fun RecipeCard(recipe: Recipe, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(200.dp)
-            .clickable { /* Show details later */ },
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
