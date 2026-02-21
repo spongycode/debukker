@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
+    alias(libs.plugins.kotlinxSerialization)
 }
 
 val isDebug = project.hasProperty("isDebug")
@@ -51,6 +52,8 @@ kotlin {
             implementation(libs.compose.components.resources)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
 
             // Material Icons
             implementation(libs.material.icons.core)

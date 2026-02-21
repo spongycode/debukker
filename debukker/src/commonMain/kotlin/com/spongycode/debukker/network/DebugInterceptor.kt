@@ -9,6 +9,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.api.createClientPlugin
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.plugin
 import io.ktor.client.request.HttpResponseData
 import io.ktor.client.statement.bodyAsText
@@ -25,6 +26,8 @@ import io.ktor.utils.io.InternalAPI
 import io.ktor.utils.io.core.toByteArray
 import kotlinx.coroutines.delay
 import kotlin.time.Clock
+import kotlinx.serialization.json.Json
+import io.ktor.serialization.kotlinx.json.json
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -69,12 +72,14 @@ val DebugNetworkPlugin = createClientPlugin("DebugNetworkPlugin") {
                     body = ByteReadChannel(bodyBytes),
                     callContext = request.executionContext
                 )
-                
+
                 val transactionId = request.attributes.getOrNull(TransactionIdKey)
                 if (transactionId != null) {
-                    val startTime = request.attributes.getOrNull(DebugStartTimeKey) ?: Clock.System.now().toEpochMilliseconds()
+                    val startTime =
+                        request.attributes.getOrNull(DebugStartTimeKey) ?: Clock.System.now()
+                            .toEpochMilliseconds()
                     val endTime = Clock.System.now().toEpochMilliseconds()
-                    
+
                     val responseHeaders = mutableMapOf<String, String>()
                     responseData.headers.forEach { key, values ->
                         responseHeaders[key] = values.joinToString(", ")
@@ -188,11 +193,14 @@ val DebugNetworkPlugin = createClientPlugin("DebugNetworkPlugin") {
         val isMockedViaAttribute = response.request.attributes.getOrNull(MockedResponseKey) != null
         if (isMockedViaAttribute) return@onResponse
 
-        val startTime = response.request.attributes.getOrNull(DebugStartTimeKey) ?: Clock.System.now().toEpochMilliseconds()
+        val startTime =
+            response.request.attributes.getOrNull(DebugStartTimeKey) ?: Clock.System.now()
+                .toEpochMilliseconds()
         val endTime = Clock.System.now().toEpochMilliseconds()
         val duration = endTime - startTime
 
-        val transactionId = response.request.attributes.getOrNull(TransactionIdKey) ?: Uuid.random().toString()
+        val transactionId =
+            response.request.attributes.getOrNull(TransactionIdKey) ?: Uuid.random().toString()
 
         val responseHeaders = mutableMapOf<String, String>()
         response.headers.forEach { key, values ->
@@ -227,6 +235,13 @@ val DebugNetworkPlugin = createClientPlugin("DebugNetworkPlugin") {
 
 fun createDebugHttpClient(): HttpClient {
     return HttpClient {
+        install(ContentNegotiation) {
+            json(Json {
+                prettyPrint = true
+                isLenient = true
+                ignoreUnknownKeys = true
+            })
+        }
         install(DebugNetworkPlugin)
     }
 }
