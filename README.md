@@ -143,9 +143,34 @@ fun initDebukker() { /* No-op */ }
 
 Call `initDebukker()` inside your `main()` or `MainViewController()` definitions before launching your Compose app.
 
+## Advanced: Custom HttpClient Integration
+
+If you already have a pre-configured `HttpClient` and don't want to use the `createDebugHttpClient()` helper, you can manually install the `DebugNetworkPlugin`:
+
+```kotlin
+val myClient = HttpClient {
+    // Your existing configuration...
+    install(ContentNegotiation) { json() }
+    
+    // Install the Debukker plugin manually
+    install(DebugNetworkPlugin) 
+}
+```
+
+This ensures Debukker intercepts all traffic from your existing client without forcing a new instance upon your application.
+
 ## Running the Sample
 - **Android**: `./gradlew :sample:installDebug`
 - **iOS**: Open `sample/iosApp/iosApp.xcodeproj` in Xcode (ensure you pass `-PisDebug=true` to your Gradle build phases if testing Debug mode).
 - **Desktop**: `./gradlew :sample:run -PisDebug=true`
 - **Web (WASM)**: `./gradlew :sample:wasmJsBrowserDevelopmentRun -PisDebug=true`
 - **Web (JS)**: `./gradlew :sample:jsBrowserDevelopmentRun -PisDebug=true`
+
+
+## Contributing
+Feel free to contribute to this project by submitting issues, pull requests, or providing valuable feedback. Your contributions are always welcome!
+
+## License
+Debukker is released under the [MIT License](https://opensource.org/licenses/MIT). Feel free to modify or add to this list based on the specific features of your app.
+
+## Happy coding! 🎉👩‍💻👨‍💻
