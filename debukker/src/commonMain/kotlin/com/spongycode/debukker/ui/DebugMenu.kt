@@ -41,9 +41,10 @@ fun DebugMenu(
     }
 
     DebukkerTheme {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ModalBottomSheet(
             onDismissRequest = onDismiss,
-            modifier = Modifier.fillMaxHeight(0.9f),
+            sheetState = sheetState,
             dragHandle = {
                 BottomSheetDefaults.DragHandle(
                     color = MaterialTheme.colorScheme.outline.copy(
@@ -52,7 +53,6 @@ fun DebugMenu(
                 )
             },
             containerColor = MaterialTheme.colorScheme.background,
-            shape = RoundedCornerShape(24.dp),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Row(
