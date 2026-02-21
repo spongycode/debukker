@@ -3,80 +3,121 @@
 A powerful, plug-and-play Network Debugger and Interceptor for Kotlin Multiplatform (KMP) projects.
 
 ## Features
+- **Zero Release Overhead**: Implements a Facade pattern allowing you to completely strip the library from your production builds across all KMP targets.
+- **Draggable Debug Button**: A floating action button that persists its position across screens.
 - **Network Logging**: View all Ktor requests and responses in real-time.
 - **Request/Response Mocking**: Override status codes, bodies, headers, and simulate delays.
-- **Network Controls**: Toggle Offline Mode or simulate slow networks with Throttling.
-- **Cross-Platform Persistence**: Settings and mocks persist across app restarts using platform-specific storage.
-- **Multi-platform Support**: Android, iOS, Desktop (JVM), and Web (JS & WASM).
+- **Environment Switcher**: Dynamically switch your API base URLs (Production, Staging, Local, Custom) without rebuilding.
+- **Cross-Platform**: Android, iOS, Desktop (JVM), and Web (JS & WASM).
 
-## Project Structure
-- `:debukker`: The core library module.
-- `:sample`: A multi-platform sample app demonstrating integration.
+## Release-Safe Integration (Facade Pattern)
 
-## Integration
+To ensure Debukker's UI and logic are fully removed from your release builds, we strongly recommend against adding it to `commonMain`. Instead, use the **Facade Pattern** as demonstrated in the `:sample` project.
 
-### 1. Add Dependency
-Add the Debukker library to your shared module's `commonMain` dependencies:
+### 1. Create a Facade in `commonMain`
+Create an object in your shared module to hold references to the Debukker components. In release builds, these will be no-ops.
 
 ```kotlin
-commonMain.dependencies {
-    implementation(project(":debukker"))
+// commonMain/src/.../DebugFacade.kt
+object DebugFacade {
+    var DebukkerUI: @Composable () -> Unit = {}
+    var httpClientFactory: () -> HttpClient = { HttpClient() }
 }
 ```
 
-### 2. Configure Ktor Client
-Install the `DebugNetworkPlugin` into your Ktor `HttpClient`:
-
+Use this facade in your application:
 ```kotlin
-import com.spongycode.debukker.network.DebugNetworkPlugin
-
-val client = HttpClient {
-    install(DebugNetworkPlugin)
-}
-
-// Or use the helper factory
-val client = createDebugHttpClient()
-```
-
-### 3. Initialize Storage (Android only)
-In your Android `MainActivity`, initialize the debug preferences:
-
-```kotlin
-import com.spongycode.debukker.preferences.initializePreferences
-
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        initializePreferences(this)
-        setContent { App() }
-    }
-}
-```
-
-### 4. Show Debug Menu
-Drop the `DebugMenu` composable into your UI:
-
-```kotlin
-import com.spongycode.debukker.ui.DebugMenu
-
+// App.kt
 @Composable
 fun App() {
-    var showDebugMenu by remember { mutableStateOf(false) }
-
-    Box {
-        // Your App UI
+    val client = remember { DebugFacade.httpClientFactory() }
+    
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Your App UI...
         
-        DebugMenu(
-            isVisible = showDebugMenu,
-            onDismiss = { showDebugMenu = false }
-        )
+        // This will be a no-op in release builds, but will render a DraggableDebugButton in debug builds
+        DebugFacade.DebukkerUI()
     }
 }
 ```
+
+### 2. Configure Dependencies (`build.gradle.kts`)
+Add the library only to specific debug configurations. For Android, use `debugImplementation`. For other platforms, use a Gradle project property (e.g., `isDebug`) combined with `srcDir` re-routing.
+
+```kotlin
+val isDebug = project.hasProperty("isDebug")
+
+kotlin {
+    sourceSets {
+        val jvmMain by getting {
+            dependencies { if (isDebug) implementation("com.spongycode:debukker:<version>") }
+            // Point to different source sets based on build type
+            kotlin.srcDir(if (isDebug) "src/nonAndroidDebug/kotlin" else "src/nonAndroidRelease/kotlin")
+        }
+        val iosMain by creating {
+            dependencies { if (isDebug) implementation("com.spongycode:debukker:<version>") }
+            kotlin.srcDir(if (isDebug) "src/nonAndroidDebug/kotlin" else "src/nonAndroidRelease/kotlin")
+        }
+        // ... (Repeat for jsMain, wasmJsMain, etc.)
+    }
+}
+
+dependencies {
+    debugImplementation("com.spongycode:debukker:<version>")
+}
+```
+
+### 3. Initialize on Android
+Create a `DebugInitializer` object in `src/androidDebug/kotlin` and `src/androidRelease/kotlin`.
+
+**`src/androidDebug/kotlin/.../DebugInitializer.kt`**
+```kotlin
+import com.spongycode.debukker.preferences.initializePreferences
+import com.spongycode.debukker.ui.DraggableDebugButton
+import com.spongycode.debukker.network.createDebugHttpClient
+
+object DebugInitializer {
+    fun init(context: Context) {
+        initializePreferences(context)
+        DebugFacade.DebukkerUI = { DraggableDebugButton() }
+        DebugFacade.httpClientFactory = { createDebugHttpClient() }
+    }
+}
+```
+
+**`src/androidRelease/kotlin/.../DebugInitializer.kt`**
+```kotlin
+object DebugInitializer {
+    fun init(context: Context) { /* No-op */ }
+}
+```
+
+Call `DebugInitializer.init(this)` inside your `MainActivity.onCreate`.
+
+### 4. Initialize on Non-Android Targets
+Create a top-level `initDebukker()` function in `src/nonAndroidDebug/kotlin` and `src/nonAndroidRelease/kotlin`.
+
+**`src/nonAndroidDebug/kotlin/.../DebukkerInit.kt`**
+```kotlin
+import com.spongycode.debukker.ui.DraggableDebugButton
+import com.spongycode.debukker.network.createDebugHttpClient
+
+fun initDebukker() {
+    DebugFacade.DebukkerUI = { DraggableDebugButton() }
+    DebugFacade.httpClientFactory = { createDebugHttpClient() }
+}
+```
+
+**`src/nonAndroidRelease/kotlin/.../DebukkerInit.kt`**
+```kotlin
+fun initDebukker() { /* No-op */ }
+```
+
+Call `initDebukker()` inside your `main()` or `MainViewController()` definitions before launching your Compose app.
 
 ## Running the Sample
 - **Android**: `./gradlew :sample:installDebug`
-- **iOS**: Open `sample/iosApp/iosApp.xcodeproj` in Xcode.
-- **Desktop**: `./gradlew :sample:run`
-- **Web (WASM)**: `./gradlew :sample:wasmJsBrowserDevelopmentRun`
-- **Web (JS)**: `./gradlew :sample:jsBrowserDevelopmentRun`
+- **iOS**: Open `sample/iosApp/iosApp.xcodeproj` in Xcode (ensure you pass `-PisDebug=true` to your Gradle build phases if testing Debug mode).
+- **Desktop**: `./gradlew :sample:run -PisDebug=true`
+- **Web (WASM)**: `./gradlew :sample:wasmJsBrowserDevelopmentRun -PisDebug=true`
+- **Web (JS)**: `./gradlew :sample:jsBrowserDevelopmentRun -PisDebug=true`
