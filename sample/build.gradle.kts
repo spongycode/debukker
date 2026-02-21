@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.composeHotReload)
 }
 
+val isDebug = project.hasProperty("isDebug")
+
 kotlin {
     androidTarget {
     }
@@ -59,24 +61,36 @@ kotlin {
             implementation(libs.ktor.client.content.negotiation)
             implementation(libs.ktor.serialization.kotlinx.json)
         }
-        jvmMain.dependencies {
-            implementation(project(":debukker"))
-            implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutinesSwing)
+        val jvmMain by getting {
+            dependencies {
+                if (isDebug) implementation(project(":debukker"))
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlinx.coroutinesSwing)
+            }
+            kotlin.srcDir(if (isDebug) "src/nonAndroidDebug/kotlin" else "src/nonAndroidRelease/kotlin")
         }
-        jsMain.dependencies {
-            implementation(project(":debukker"))
-            // No additional dependencies needed
+        val jsMain by getting {
+            dependencies {
+                if (isDebug) implementation(project(":debukker"))
+            }
+            kotlin.srcDir(if (isDebug) "src/nonAndroidDebug/kotlin" else "src/nonAndroidRelease/kotlin")
         }
-        wasmJsMain.dependencies {
-            implementation(project(":debukker"))
-            // No additional dependencies needed
+        val wasmJsMain by getting {
+            dependencies {
+                if (isDebug) implementation(project(":debukker"))
+            }
+            kotlin.srcDir(if (isDebug) "src/nonAndroidDebug/kotlin" else "src/nonAndroidRelease/kotlin")
+        }
+        val iosMain by creating {
+            dependsOn(commonMain.get())
+            dependencies { if (isDebug) implementation(project(":debukker")) }
+            kotlin.srcDir(if (isDebug) "src/nonAndroidDebug/kotlin" else "src/nonAndroidRelease/kotlin")
         }
         val iosArm64Main by getting {
-            dependencies { implementation(project(":debukker")) }
+            dependsOn(iosMain)
         }
         val iosSimulatorArm64Main by getting {
-            dependencies { implementation(project(":debukker")) }
+            dependsOn(iosMain)
         }
     }
 }
